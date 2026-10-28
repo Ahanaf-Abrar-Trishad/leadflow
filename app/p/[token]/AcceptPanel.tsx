@@ -11,11 +11,14 @@ export function AcceptPanel({
   status,
   signerName,
   acceptedAt,
+  payment,
 }: {
   token: string;
   status: string;
   signerName: string | null;
   acceptedAt: string | null;
+  /** The first invoice due after signing, if any is still open. */
+  payment: { url: string; label: string } | null;
 }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -35,6 +38,14 @@ export function AcceptPanel({
           {acceptedAt ? ` on ${new Date(acceptedAt).toLocaleString("en-US", { dateStyle: "long", timeStyle: "short" })}` : ""}.
           We will be in touch about next steps. You can print this page for your records.
         </p>
+        {payment && (
+          <a
+            href={payment.url}
+            className="mt-4 inline-flex min-h-11 items-center rounded-md bg-signal px-5 text-sm font-medium text-white shadow-raised hover:bg-signal-strong"
+          >
+            {payment.label}
+          </a>
+        )}
       </div>
     );
   }

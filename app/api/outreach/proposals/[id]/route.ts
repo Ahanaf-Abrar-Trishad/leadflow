@@ -18,6 +18,7 @@ const editSchema = z.object({
     .max(MAX_LINE_ITEMS),
   terms: z.string().max(10000),
   validUntil: z.iso.date().nullable(),
+  depositPercent: z.number().int().min(0).max(100),
 });
 
 export async function PUT(request: Request, ctx: RouteContext<"/api/outreach/proposals/[id]">) {

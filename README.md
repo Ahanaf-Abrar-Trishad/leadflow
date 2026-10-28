@@ -16,7 +16,7 @@ everything before it goes out.
 | 3. AI icebreakers through a Claude connector (MCP, your own Claude subscription) and an approval queue | ✅ Done |
 | 4. Reply triage and answer drafts by Claude, sales pipeline board | ✅ Done |
 | 5. Proposals: Claude drafts the wording, you price it, the client e-signs on a private link | ✅ Done |
-| 6. Payments (gateway to be decided) and onboarding | ⏳ Next |
+| 6. Payments (Stripe card/ACH or manual) and onboarding: welcome email, intake form, kickoff link, checklist | ✅ Done |
 | 7. WhatsApp channel | Planned |
 
 ## Leads
@@ -111,6 +111,36 @@ already sent. Set `AGENCY_NAME` to show your agency on proposals.
 This is a simple click-to-accept electronic signature with a consent
 statement and an audit record. Have a lawyer review your terms and whether
 it is enough for your contracts.
+
+## Payments and onboarding
+
+Each proposal has a **deposit %** (due on acceptance; the rest is billed when
+you mark the work done). Signing creates the deposit invoice, plus a monthly
+invoice when the proposal has monthly items. Right after signing, the client
+is offered a **Pay now** button.
+
+Every invoice has a private pay link (`/pay/<signed token>`):
+
+- With `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` set, the client pays by
+  card or bank (ACH) through Stripe Checkout; the monthly fee becomes a
+  Stripe subscription. Stripe's webhook (`/api/stripe/webhook`, see
+  `.env.example` for the events) marks the invoice paid; bank payments show
+  as processing until they clear.
+- Without Stripe, or for wire, Zelle or check, the page shows
+  `PAYMENT_INSTRUCTIONS` and you press **Mark paid** on the client page.
+
+The first payment opens onboarding on the **Clients** page:
+
+- **Welcome email**: Claude drafts it through the connector (or start from
+  the template), you edit and send it in the same email thread. LeadFlow
+  appends the intake form link and your `KICKOFF_URL` booking link.
+- **Intake form** (`/intake/<signed token>`): goals, services, ideal
+  customers, brand, a link to logo and photos, and who can grant access. It
+  never asks for passwords; request access through each service instead.
+- **Checklist**: a starting list of onboarding tasks you tick off, add to or
+  trim per client.
+
+**Work done: bill the balance** creates the final invoice.
 
 ## Run it locally
 

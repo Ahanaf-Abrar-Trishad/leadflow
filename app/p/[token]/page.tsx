@@ -4,6 +4,8 @@ import { db } from "@/db/client";
 import { deals } from "@/db/schema";
 import { ProposalDocument } from "@/components/proposals/ProposalDocument";
 import { getProposalByToken, recordProposalView } from "@/lib/proposals/proposals";
+import { firstOpenInvoice, payUrl } from "@/lib/billing/invoices";
+import { formatCents } from "@/lib/billing/money";
 import { AcceptPanel } from "./AcceptPanel";
 
 /*
@@ -33,6 +35,8 @@ export default async function PublicProposalPage({ params }: { params: Promise<{
   await recordProposalView(proposal.id);
   const [deal] = await db.select({ title: deals.title }).from(deals).where(eq(deals.id, proposal.dealId));
   const expired = proposal.status === "sent" && proposal.validUntil !== null && proposal.validUntil <= new Date();
+  // Right after signing, send the client straight on to what is due.
+  const due = proposal.status === "accepted" ? await firstOpenInvoice(proposal.dealId) : null;
 
   return (
     <main id="main-content" className="px-4 py-10 sm:py-16">
@@ -43,6 +47,7 @@ export default async function PublicProposalPage({ params }: { params: Promise<{
         lineItems={proposal.lineItems}
         terms={proposal.terms}
         validUntil={proposal.validUntil}
+        depositPercent={proposal.depositPercent}
         preparedFor={deal?.title ?? "you"}
         preparedBy={process.env.AGENCY_NAME?.trim() || undefined}
       />
@@ -52,6 +57,7 @@ export default async function PublicProposalPage({ params }: { params: Promise<{
           status={expired ? "expired" : proposal.status}
           signerName={proposal.signerName}
           acceptedAt={proposal.acceptedAt?.toISOString() ?? null}
+          payment={due ? { url: payUrl(due), label: `Pay ${formatCents(due.amountCents)}${due.kind === "monthly" ? " / month" : ""} now` } : null}
         />
       </div>
     </main>

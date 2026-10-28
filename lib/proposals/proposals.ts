@@ -1,7 +1,8 @@
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { db, runAtomic } from "@/db/client";
 import { contacts, deals, events, proposals, type ProposalLineItem, type ProposalSection } from "@/db/schema";
-import { siteUrl } from "@/lib/outreach/mailboxes/googleClient";
+import { publicUrl } from "@/lib/links/signedLink";
+import { createInvoicesForAcceptance } from "@/lib/billing/invoices";
 import { DEFAULT_TERMS, endOfPacificDay, pacificDay, problemsBeforeSending, snapshotOf } from "./content";
 import { signProposalToken, verifyProposalToken } from "./token";
 
@@ -17,7 +18,7 @@ function defaultValidUntil(now = new Date()): Date {
 }
 
 export function proposalUrl(proposal: Pick<ProposalRow, "id" | "linkVersion">): string {
-  return `${siteUrl().replace(/\/+$/, "")}/p/${signProposalToken(proposal.id, proposal.linkVersion)}`;
+  return publicUrl(`/p/${signProposalToken(proposal.id, proposal.linkVersion)}`);
 }
 
 export async function getProposal(id: string): Promise<ProposalRow | null> {
@@ -103,6 +104,7 @@ export interface ProposalEdit {
   lineItems: ProposalLineItem[];
   terms: string;
   validUntil: Date | null;
+  depositPercent: number;
 }
 
 export async function updateProposalDraft(id: string, edit: ProposalEdit): Promise<void> {
@@ -117,6 +119,7 @@ export async function updateProposalDraft(id: string, edit: ProposalEdit): Promi
       lineItems: edit.lineItems,
       terms: edit.terms,
       validUntil: edit.validUntil,
+      depositPercent: edit.depositPercent,
       editedByOperator: true,
       updatedAt: new Date(),
     })
@@ -194,7 +197,8 @@ export interface Signature {
 
 /**
  * The client's electronic signature. Records who, when, from where, and an
- * exact copy of what they agreed to, then marks the deal won. Only a sent,
+ * exact copy of what they agreed to, marks the deal won, and creates the
+ * invoices due on acceptance (deposit and monthly). Only a sent,
  * unexpired proposal can be accepted, and only once.
  */
 export async function acceptProposal(id: string, signature: Signature, now: Date = new Date()): Promise<void> {
@@ -224,6 +228,7 @@ export async function acceptProposal(id: string, signature: Signature, now: Date
       .where(and(eq(proposals.id, id), eq(proposals.status, "sent")))
       .returning({ id: proposals.id });
     if (accepted.length === 0) throw new ProposalError("This proposal can no longer be accepted.");
+    await createInvoicesForAcceptance(tx, id, proposal.dealId, snapshotOf(proposal));
     await tx
       .update(deals)
       .set({ stage: "won", stageChangedAt: now, lostReason: null, updatedAt: now })

@@ -14,6 +14,11 @@ export interface ProposalTotals {
   monthly: number;
 }
 
+/** The part of the one-time total due on acceptance, in whole dollars. */
+export function depositUsd(oneTimeUsd: number, depositPercent: number): number {
+  return Math.round((oneTimeUsd * depositPercent) / 100);
+}
+
 export function proposalTotals(lineItems: ProposalLineItem[]): ProposalTotals {
   return lineItems.reduce(
     (totals, item) => {
@@ -32,6 +37,7 @@ export function problemsBeforeSending(proposal: {
   sections: ProposalSection[];
   lineItems: ProposalLineItem[];
   validUntil: Date | null;
+  depositPercent: number;
 }, now: Date = new Date()): string[] {
   const problems: string[] = [];
   if (!proposal.title.trim()) problems.push("Add a title.");
@@ -42,6 +48,9 @@ export function problemsBeforeSending(proposal: {
     problems.push("Set a price on every line item.");
   }
   if (proposal.validUntil && proposal.validUntil <= now) problems.push("The valid-until date has passed.");
+  if (!Number.isInteger(proposal.depositPercent) || proposal.depositPercent < 0 || proposal.depositPercent > 100) {
+    problems.push("The deposit must be between 0% and 100%.");
+  }
   return problems;
 }
 
@@ -52,6 +61,7 @@ export function snapshotOf(proposal: {
   lineItems: ProposalLineItem[];
   terms: string;
   validUntil: Date | null;
+  depositPercent: number;
 }): ProposalSnapshot {
   return {
     title: proposal.title,
@@ -60,6 +70,7 @@ export function snapshotOf(proposal: {
     lineItems: proposal.lineItems,
     terms: proposal.terms,
     validUntil: proposal.validUntil?.toISOString() ?? null,
+    depositPercent: proposal.depositPercent,
   };
 }
 

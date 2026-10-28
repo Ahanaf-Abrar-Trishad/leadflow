@@ -305,10 +305,10 @@ export const leads = pgTable(
 
 /** Text Claude drafted through the MCP server, waiting for an operator.
  * Nothing Claude writes reaches a prospect until a person approves it: an
- * icebreaker on the Approvals page (lib/ai/drafts.ts), a reply by sending it
- * from the Replies inbox (lib/ai/replies.ts). One pending draft per subject
- * and kind - a newer draft replaces the pending one.
- * kind: "icebreaker" (has leadId) | "reply" (has enrollmentId)
+ * icebreaker on the Approvals page (lib/ai/drafts.ts), a reply or a welcome
+ * email by sending it from the Replies inbox or the client page. One pending
+ * draft per subject and kind - a newer draft replaces the pending one.
+ * kind: "icebreaker" (has leadId) | "reply" | "welcome" (have enrollmentId)
  * status: "pending" | "approved" | "rejected" */
 export const aiDrafts = pgTable(
   "ai_drafts",
@@ -384,6 +384,7 @@ export interface ProposalSnapshot {
   lineItems: ProposalLineItem[];
   terms: string;
   validUntil: string | null;
+  depositPercent?: number;
 }
 
 /** A priced proposal for a deal, accepted by the client on a public signed
@@ -407,6 +408,9 @@ export const proposals = pgTable(
     terms: text("terms").notNull().default(""),
     validUntil: timestamp("valid_until", { withTimezone: true }),
     linkVersion: integer("link_version").notNull().default(1),
+    /** Share of the one-time total billed on acceptance; the rest is billed
+     * when the operator marks the work done. 100 = everything up front. */
+    depositPercent: integer("deposit_percent").notNull().default(50),
     draftedBy: text("drafted_by").notNull().default("operator"),
     /** Once an operator edits a Claude draft, Claude may no longer overwrite it. */
     editedByOperator: boolean("edited_by_operator").notNull().default(false),
@@ -433,4 +437,66 @@ export const proposals = pgTable(
       .where(sql`${table.status} in ('draft', 'sent')`),
     index("proposals_deal_idx").on(table.dealId),
   ],
+);
+
+/** Money owed by a client, paid on a public signed link (/pay/[token]) by
+ * card through Stripe, or marked paid by hand (wire, Zelle, check).
+ * kind: "deposit" | "balance" | "full" | "monthly"
+ * status: "open" | "processing" (bank payment on its way) | "paid" | "void"
+ * method: "stripe" | "manual" */
+export const invoices = pgTable(
+  "invoices",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    dealId: uuid("deal_id")
+      .notNull()
+      .references(() => deals.id, { onDelete: "cascade" }),
+    proposalId: uuid("proposal_id").references(() => proposals.id, { onDelete: "set null" }),
+    kind: text("kind").notNull(),
+    description: text("description").notNull(),
+    /** Cents, never floating dollars. For "monthly" this is the monthly amount. */
+    amountCents: integer("amount_cents").notNull(),
+    status: text("status").notNull().default("open"),
+    method: text("method"),
+    linkVersion: integer("link_version").notNull().default(1),
+    stripeCheckoutSessionId: text("stripe_checkout_session_id"),
+    stripeSubscriptionId: text("stripe_subscription_id"),
+    note: text("note"),
+    paidAt: timestamp("paid_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("invoices_deal_idx").on(table.dealId),
+    uniqueIndex("invoices_checkout_session_idx").on(table.stripeCheckoutSessionId),
+  ],
+);
+
+export interface OnboardingTask {
+  label: string;
+  done: boolean;
+}
+
+/** Answers from the client's intake form (/intake/[token]). */
+export type IntakeAnswers = Record<string, string>;
+
+/** Getting a new client started, opened by their first payment. One per deal.
+ * The intake form is a public signed link; its answers are untrusted text. */
+export const onboardings = pgTable(
+  "onboardings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    dealId: uuid("deal_id")
+      .notNull()
+      .references(() => deals.id, { onDelete: "cascade" }),
+    tasks: jsonb("tasks").notNull().default([]).$type<OnboardingTask[]>(),
+    intakeLinkVersion: integer("intake_link_version").notNull().default(1),
+    intakeAnswers: jsonb("intake_answers").$type<IntakeAnswers>(),
+    intakeSubmittedAt: timestamp("intake_submitted_at", { withTimezone: true }),
+    welcomeSentAt: timestamp("welcome_sent_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex("onboardings_deal_idx").on(table.dealId)],
 );

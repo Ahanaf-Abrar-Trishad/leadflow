@@ -119,11 +119,15 @@ export function DealCard({ deal }: { deal: DealCardData }) {
           <span />
         )}
         <span className="flex gap-3">
-          {deal.stage !== "lost" && (
+          {deal.stage === "won" ? (
+            <Link href={`/outreach/clients/${deal.id}`} className="text-signal-strong hover:underline">
+              Client
+            </Link>
+          ) : deal.stage !== "lost" ? (
             <button type="button" disabled={saving} onClick={openProposal} className="text-signal-strong hover:underline">
               Proposal
             </button>
-          )}
+          ) : null}
           <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="text-ink-muted hover:text-ink">
             {open ? "Close" : "Details"}
           </button>

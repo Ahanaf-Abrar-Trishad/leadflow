@@ -47,6 +47,7 @@ async function priceAndSend(proposalId: string) {
     lineItems: proposal.lineItems.map((item, index) => ({ ...item, amountUsd: index === 0 ? 4000 : 600 })),
     terms: proposal.terms,
     validUntil: new Date(Date.now() + 7 * 86_400_000),
+    depositPercent: 50,
   });
   return markProposalSent(proposalId);
 }

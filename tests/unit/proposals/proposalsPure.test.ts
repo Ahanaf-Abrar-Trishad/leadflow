@@ -1,7 +1,7 @@
 /** @jest-environment node */
 import crypto from "node:crypto";
 import { signProposalToken, verifyProposalToken } from "@/lib/proposals/token";
-import { endOfPacificDay, pacificDay, problemsBeforeSending, proposalTotals } from "@/lib/proposals/content";
+import { depositUsd, endOfPacificDay, pacificDay, problemsBeforeSending, proposalTotals } from "@/lib/proposals/content";
 
 const KEY = crypto.randomBytes(32);
 const ID = "3f6c2a1e-1111-4222-8333-944455556666";
@@ -30,10 +30,17 @@ describe("proposal content", () => {
       { description: "Local SEO", amountUsd: 600, billing: "monthly" as const },
     ],
     validUntil: null,
+    depositPercent: 50,
   };
 
-  it("totals one-time and monthly separately", () => {
+  it("totals one-time and monthly separately, and works out the deposit", () => {
     expect(proposalTotals(base.lineItems)).toEqual({ oneTime: 4000, monthly: 600 });
+    expect(depositUsd(5100, 50)).toBe(2550);
+    expect(depositUsd(999, 33)).toBe(330);
+  });
+
+  it("rejects a deposit outside 0-100%", () => {
+    expect(problemsBeforeSending({ ...base, depositPercent: 120 })).toContain("The deposit must be between 0% and 100%.");
   });
 
   it("will not send with an unpriced item, an empty plan or an expired date", () => {

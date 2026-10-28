@@ -91,3 +91,13 @@ export async function getDealForEnrollment(enrollmentId: string) {
     .where(eq(enrollments.id, enrollmentId));
   return row ?? null;
 }
+
+/** Won deals - the agency's clients - newest first. */
+export async function listClients() {
+  return db
+    .select({ id: deals.id, title: deals.title, contactEmail: contacts.email, stageChangedAt: deals.stageChangedAt })
+    .from(deals)
+    .innerJoin(contacts, eq(contacts.id, deals.contactId))
+    .where(eq(deals.stage, "won"))
+    .orderBy(desc(deals.stageChangedAt));
+}

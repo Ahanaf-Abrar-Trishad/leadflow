@@ -15,6 +15,7 @@ export type StatusTone = "win" | "live" | "neutral" | "attention" | "fault";
 const TONE_BY_STATUS: Record<string, StatusTone> = {
   replied: "win",
   accepted: "win",
+  paid: "win",
 
   active: "live",
   healthy: "live",
@@ -32,6 +33,9 @@ const TONE_BY_STATUS: Record<string, StatusTone> = {
   declined: "fault",
 
   paused: "attention",
+  open: "attention",
+  processing: "neutral",
+  void: "neutral",
   warming: "attention",
 
   bounced: "fault",

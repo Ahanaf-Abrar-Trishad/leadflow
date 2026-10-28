@@ -40,6 +40,7 @@ export default async function ProposalPage({ params }: { params: Promise<{ id: s
           lineItems: proposal.lineItems,
           terms: proposal.terms,
           validUntil: proposal.validUntil ? pacificDay(proposal.validUntil) : "",
+          depositPercent: proposal.depositPercent,
           viewCount: proposal.viewCount,
           lastViewedAt: proposal.lastViewedAt?.toISOString() ?? null,
           signerName: proposal.signerName,

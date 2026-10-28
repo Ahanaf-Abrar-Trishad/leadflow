@@ -9,7 +9,7 @@ import { CopyField } from "./CopyField";
 export const metadata = { title: "Connect Claude | LeadFlow" };
 export const dynamic = "force-dynamic";
 
-const SCHEDULED_TASK_PROMPT = `Use the LeadFlow connector and follow its instructions. Call get_queue_status. First triage every waiting reply with list_replies_to_triage and triage_reply. Then draft a proposal for each deal from list_deals_needing_proposal with get_deal_context and save_proposal_draft. Then draft icebreakers for up to 25 leads with list_leads_needing_icebreaker, get_lead_research and save_icebreaker_draft. When done, tell me which replies look interested, which proposals are ready for pricing, how many drafts you saved, and anything that looked off.`;
+const SCHEDULED_TASK_PROMPT = `Use the LeadFlow connector and follow its instructions. Call get_queue_status. First draft a welcome email for each new client from list_clients_needing_welcome with get_deal_context and save_welcome_draft. Then triage every waiting reply with list_replies_to_triage and triage_reply. Then draft a proposal for each deal from list_deals_needing_proposal with get_deal_context and save_proposal_draft. Then draft icebreakers for up to 25 leads with list_leads_needing_icebreaker, get_lead_research and save_icebreaker_draft. When done, tell me which replies look interested, which proposals are ready for pricing, how many drafts you saved, and anything that looked off.`;
 
 const sectionTitle = "mb-3 font-display text-sm font-semibold uppercase tracking-wide text-ink-muted";
 
@@ -25,7 +25,7 @@ export default async function ConnectClaudePage() {
     <PageShell>
       <PageHeader
         title="Connect Claude"
-        description="Claude triages replies and drafts answers, proposals and icebreakers through LeadFlow's MCP connector, using your own Claude subscription. No API key is needed, and nothing Claude writes is sent until you approve it."
+        description="Claude triages replies and drafts answers, proposals, welcome emails and icebreakers through LeadFlow's MCP connector, using your own Claude subscription. No API key is needed, and nothing Claude writes is sent until you approve it."
       />
 
       {!endpoint ? (

@@ -15,9 +15,14 @@ pipeline. See README.md for the stage roadmap.
 - `/api/mcp/[token]` is the one deliberately public API route: Claude's
   connector, guarded by MCP_ACCESS_TOKEN in the path (lib/ai/mcpAuth.ts).
   Its tools may read leads and save drafts, never send or change campaigns.
-- `/p/[token]` and `/api/p/[token]/*` are the public proposal page and its
-  accept/decline actions, keyed by a signed, versioned token
-  (lib/proposals/token.ts). Revoking bumps `linkVersion`.
+- Public pages and routes, each keyed by a signed, versioned token
+  (lib/links/signedLink.ts, one key per purpose; revoking bumps the row's
+  link version): `/p/[token]` (proposal, accept/decline under `/api/p`),
+  `/pay/[token]` (invoice, `/api/pay/[token]/checkout`) and `/intake/[token]`
+  (`/api/intake/[token]`). `/api/stripe/webhook` is public but only acts on
+  events signed with STRIPE_WEBHOOK_SECRET.
+- Money is integer cents in `invoices`; amounts always come from the signed
+  proposal snapshot, never from a request.
 - Claude never sets prices: proposal amounts are operator-only, and a
   proposal cannot be sent until every line item is priced.
 - Never send email without operator approval; the AI only drafts. AI text

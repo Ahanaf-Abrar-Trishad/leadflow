@@ -7,7 +7,7 @@ import { Button } from "@/components/shared/Button";
 import { BlueprintCard } from "@/components/outreach/BlueprintCard";
 import { useUIStore } from "@/store/uiStore";
 import type { ProposalLineItem, ProposalSection } from "@/db/schema";
-import { MAX_LINE_ITEMS, MAX_SECTIONS, proposalTotals, usd } from "@/lib/proposals/content";
+import { depositUsd, MAX_LINE_ITEMS, MAX_SECTIONS, proposalTotals, usd } from "@/lib/proposals/content";
 
 export interface EditableProposal {
   id: string;
@@ -19,6 +19,7 @@ export interface EditableProposal {
   terms: string;
   /** yyyy-mm-dd or "". */
   validUntil: string;
+  depositPercent: number;
   viewCount: number;
   lastViewedAt: string | null;
   signerName: string | null;
@@ -52,6 +53,7 @@ export function ProposalEditor({
   const [lineItems, setLineItems] = useState(proposal.lineItems);
   const [terms, setTerms] = useState(proposal.terms);
   const [validUntil, setValidUntil] = useState(proposal.validUntil);
+  const [depositPercent, setDepositPercent] = useState(String(proposal.depositPercent));
   const [message, setMessage] = useState(defaultMessage);
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -80,6 +82,7 @@ export function ProposalEditor({
       lineItems,
       terms,
       validUntil: validUntil || null,
+      depositPercent: Number(depositPercent) || 0,
     });
     if (!ok) {
       showToast("error", typeof result.error === "string" ? result.error : "Could not save. Check the fields.");
@@ -335,6 +338,25 @@ export function ProposalEditor({
             {totals.oneTime > 0 && totals.monthly > 0 && " · "}
             {totals.monthly > 0 && <>Monthly {usd.format(totals.monthly)}</>}
           </p>
+          <label className="mt-3 flex flex-wrap items-center gap-2 text-sm text-ink">
+            Due on acceptance
+            <input
+              aria-label="Deposit percent of the one-time total"
+              className={`${inputClass} w-20`}
+              inputMode="numeric"
+              disabled={!editable}
+              value={depositPercent}
+              onChange={(e) => (setDepositPercent(e.target.value.replace(/[^\d]/g, "").slice(0, 3)), touch())}
+            />
+            % of the one-time total
+            {totals.oneTime > 0 && (
+              <span className="text-ink-muted">
+                = {usd.format(depositUsd(totals.oneTime, Math.min(Number(depositPercent) || 0, 100)))} now, the rest when
+                the work is done
+              </span>
+            )}
+          </label>
+          {Number(depositPercent) > 100 && <p className="text-xs text-danger">The deposit cannot be more than 100%.</p>}
         </div>
       </BlueprintCard>
 

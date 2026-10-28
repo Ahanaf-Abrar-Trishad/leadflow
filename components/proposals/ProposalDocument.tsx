@@ -1,5 +1,5 @@
 import type { ProposalLineItem, ProposalSection } from "@/db/schema";
-import { proposalTotals, usd } from "@/lib/proposals/content";
+import { depositUsd, proposalTotals, usd } from "@/lib/proposals/content";
 
 export interface ProposalDocumentProps {
   title: string;
@@ -8,6 +8,7 @@ export interface ProposalDocumentProps {
   lineItems: ProposalLineItem[];
   terms: string;
   validUntil: Date | null;
+  depositPercent: number;
   preparedFor: string;
   preparedBy?: string;
 }
@@ -69,6 +70,20 @@ export function ProposalDocument(props: ProposalDocumentProps) {
             </div>
           )}
         </dl>
+        {(totals.oneTime > 0 || totals.monthly > 0) && (
+          <p className="mt-4 text-sm text-ink-muted">
+            Due on acceptance:{" "}
+            {[
+              totals.oneTime > 0 && props.depositPercent > 0
+                ? `${usd.format(depositUsd(totals.oneTime, props.depositPercent))}${props.depositPercent < 100 ? ` (${props.depositPercent}% of the one-time total; the rest when the work is done)` : ""}`
+                : null,
+              totals.monthly > 0 ? `the first month of ${usd.format(totals.monthly)}` : null,
+            ]
+              .filter(Boolean)
+              .join(", plus ") || "nothing - the one-time total is billed when the work is done"}
+            .
+          </p>
+        )}
       </section>
 
       {props.terms.trim() && (

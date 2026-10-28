@@ -14,8 +14,13 @@ export default async function ProposalPreviewPage({ params }: { params: Promise<
   const proposal = /^[0-9a-f-]{36}$/i.test(id) ? await getProposal(id) : null;
   if (!proposal) notFound();
   const [deal] = await db.select({ title: deals.title }).from(deals).where(eq(deals.id, proposal.dealId));
-  const shown = proposal.signedSnapshot
-    ? { ...proposal.signedSnapshot, validUntil: proposal.signedSnapshot.validUntil ? new Date(proposal.signedSnapshot.validUntil) : null }
+  const snapshot = proposal.signedSnapshot;
+  const shown = snapshot
+    ? {
+        ...snapshot,
+        validUntil: snapshot.validUntil ? new Date(snapshot.validUntil) : null,
+        depositPercent: snapshot.depositPercent ?? proposal.depositPercent,
+      }
     : proposal;
 
   return (
@@ -30,6 +35,7 @@ export default async function ProposalPreviewPage({ params }: { params: Promise<
         lineItems={shown.lineItems}
         terms={shown.terms}
         validUntil={shown.validUntil}
+        depositPercent={shown.depositPercent}
         preparedFor={deal?.title ?? "the client"}
         preparedBy={process.env.AGENCY_NAME?.trim() || undefined}
       />

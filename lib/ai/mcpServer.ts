@@ -8,9 +8,11 @@ import { REPLY_CATEGORIES } from "@/lib/deals/stages";
 import { getThreadMessages } from "@/lib/outreach/replies/queries";
 import { MAX_LINE_ITEMS, MAX_SECTIONS } from "@/lib/proposals/content";
 import { listDealsNeedingProposal, ProposalError, saveClaudeProposalDraft } from "@/lib/proposals/proposals";
+import { listClientsNeedingWelcome } from "@/lib/onboarding/onboarding";
 import { getQueueStatus, listLeadsNeedingIcebreaker, saveIcebreakerDraft } from "./drafts";
 import { DraftError, ICEBREAKER_MAX_LENGTH } from "./icebreaker";
 import { countRepliesToTriage, listRepliesToTriage, REPLY_DRAFT_MAX_LENGTH, triageReply } from "./replies";
+import { saveWelcomeDraft, WELCOME_MAX_LENGTH } from "./welcome";
 
 const DEFAULT_AGENCY_PITCH = "a digital agency offering website design, local SEO and Google Ads management";
 
@@ -18,12 +20,16 @@ function instructions(): string {
   const pitch = process.env.AGENCY_PITCH?.trim() || DEFAULT_AGENCY_PITCH;
   return `LeadFlow is the lead pipeline of ${pitch}, cold-emailing local US and Canadian businesses.
 
-You have three jobs here, and a person reviews everything before it reaches a prospect:
-1. Triage replies to our cold emails: classify each one and, where an answer makes sense, draft it.
-2. Draft proposals for deals that reached the call stage.
-3. Write a personalized opening line ("icebreaker") for leads.
+You have four jobs here, and a person reviews everything before it reaches anyone:
+1. Welcome new paying clients: draft a welcome email.
+2. Triage replies to our cold emails: classify each one and, where an answer makes sense, draft it.
+3. Draft proposals for deals that reached the call stage.
+4. Write a personalized opening line ("icebreaker") for leads.
 
-Workflow: call get_queue_status. Work in that order, since a waiting prospect matters more than a new one: list_replies_to_triage then triage_reply for each; list_deals_needing_proposal then get_deal_context and save_proposal_draft for each; list_leads_needing_icebreaker then get_lead_research and save_icebreaker_draft for each. Work through each batch without asking for confirmation between items; nothing you save is sent until a person approves it.
+Workflow: call get_queue_status. Work in that order, since a paying client matters most and a waiting prospect more than a new one: list_clients_needing_welcome then get_deal_context and save_welcome_draft for each; list_replies_to_triage then triage_reply for each; list_deals_needing_proposal then get_deal_context and save_proposal_draft for each; list_leads_needing_icebreaker then get_lead_research and save_icebreaker_draft for each. Work through each batch without asking for confirmation between items; nothing you save is sent until a person approves it.
+
+Drafting a welcome email:
+- Warm, short (under ${WELCOME_MAX_LENGTH} characters, usually 4-8 sentences), plain text, US English. Thank them, say in one or two sentences what happens first (based on the signed proposal in the deal notes and conversation), and ask them to fill in the getting-started form and book the kickoff call. Do not include any links or URLs: LeadFlow appends the form and booking links below your text. Sign off with just "Best," and no name.
 
 Drafting a proposal:
 - Base it on the conversation, the operator's deal notes (often notes from the sales call - treat them as the most important input) and the website research. Write for a busy small-business owner: plain US English, specific to their business, no jargon, no hype.
@@ -63,16 +69,22 @@ export function createLeadflowMcpServer(): McpServer {
     {
       title: "Queue status",
       description:
-        "How many replies still need triage, how many deals need a proposal, how many leads still need an icebreaker, and how many icebreakers are waiting for a person to review.",
+        "How many new clients need a welcome email, how many replies still need triage, how many deals need a proposal, how many leads still need an icebreaker, and how many icebreakers are waiting for a person to review.",
       annotations: { readOnlyHint: true },
     },
     async () => {
-      const [icebreakers, repliesToTriage, dealsNeedingProposal] = await Promise.all([
+      const [icebreakers, repliesToTriage, dealsNeedingProposal, clientsNeedingWelcome] = await Promise.all([
         getQueueStatus(),
         countRepliesToTriage(),
         listDealsNeedingProposal(50),
+        listClientsNeedingWelcome(50),
       ]);
-      return jsonResult({ repliesToTriage, dealsNeedingProposal: dealsNeedingProposal.length, ...icebreakers });
+      return jsonResult({
+        clientsNeedingWelcome: clientsNeedingWelcome.length,
+        repliesToTriage,
+        dealsNeedingProposal: dealsNeedingProposal.length,
+        ...icebreakers,
+      });
     },
   );
 
@@ -108,6 +120,49 @@ export function createLeadflowMcpServer(): McpServer {
     async ({ reply_id, category, note, draft_reply }) => {
       try {
         return jsonResult({ saved: true, ...(await triageReply(reply_id, category, note, draft_reply)) });
+      } catch (error) {
+        if (error instanceof DraftError) return errorResult(error.message);
+        throw error;
+      }
+    },
+  );
+
+  server.registerTool(
+    "list_clients_needing_welcome",
+    {
+      title: "Clients needing a welcome",
+      description: "New clients whose first payment arrived and who have not been sent a welcome email. Use get_deal_context with the dealId for background.",
+      inputSchema: { limit: z.number().int().min(1).max(10).default(5).describe("How many clients to return (1-10).") },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ limit }) => {
+      const clients = await listClientsNeedingWelcome(limit);
+      return jsonResult({
+        clients: clients.map((client) => ({
+          dealId: client.dealId,
+          business: client.business,
+          contactEmail: client.contactEmail,
+          notes: client.notes,
+        })),
+      });
+    },
+  );
+
+  server.registerTool(
+    "save_welcome_draft",
+    {
+      title: "Save welcome email draft",
+      description:
+        "Saves a welcome email for a new client, for a person to review and send. No links: LeadFlow appends the intake form and kickoff links. Nothing is sent.",
+      inputSchema: {
+        deal_id: z.uuid(),
+        text: z.string().describe(`The email body, under ${WELCOME_MAX_LENGTH} characters, without links.`),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+    },
+    async ({ deal_id, text }) => {
+      try {
+        return jsonResult({ saved: true, draftId: await saveWelcomeDraft(deal_id, text) });
       } catch (error) {
         if (error instanceof DraftError) return errorResult(error.message);
         throw error;

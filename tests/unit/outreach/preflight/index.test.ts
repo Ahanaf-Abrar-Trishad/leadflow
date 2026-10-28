@@ -12,7 +12,7 @@ describe("runPreflight", () => {
     const result = await runPreflight(
       {
         senderDomain: "example.com",
-        dkimSelector: "default",
+        dkimSelectors: ["default"],
         postalAddress: "123 Main St",
         templates: ["Hi {{first_name}}"],
         contacts: [{ id: "1", email: "a@x.com", fields: { first_name: "Jane" } }],
@@ -26,7 +26,7 @@ describe("runPreflight", () => {
     const result = await runPreflight(
       {
         senderDomain: "example.com",
-        dkimSelector: "default",
+        dkimSelectors: ["default"],
         postalAddress: "",
         templates: ["Hi {{first_name}}"],
         contacts: [{ id: "1", email: "a@x.com", fields: { first_name: "Jane" } }],
@@ -41,7 +41,7 @@ describe("runPreflight", () => {
     const result = await runPreflight(
       {
         senderDomain: "example.com",
-        dkimSelector: "default",
+        dkimSelectors: ["default"],
         postalAddress: "123 Main St",
         templates: ["Hi {{first_name}}"],
         contacts: [{ id: "1", email: "a@x.com", fields: {} }],
@@ -60,7 +60,7 @@ describe("runPreflight", () => {
     const result = await runPreflight(
       {
         senderDomain: "gmail.com",
-        dkimSelector: "default",
+        dkimSelectors: ["default"],
         postalAddress: "123 Main St",
         templates: ["Hi {{first_name}}"],
         contacts: [{ id: "1", email: "a@x.com", fields: { first_name: "Jane" } }],

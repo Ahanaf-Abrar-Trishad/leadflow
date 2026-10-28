@@ -1,4 +1,5 @@
-import { checkSpf, checkDmarc, checkDkim } from "@/lib/outreach/preflight/dns";
+import { checkSpf, checkDmarc, checkDkim, checkDkimAny } from "@/lib/outreach/preflight/dns";
+import { dkimSelectors } from "@/lib/outreach/preflight";
 
 describe("DNS preflight checks", () => {
   it("passes SPF when a v=spf1 TXT record is present", async () => {
@@ -28,5 +29,35 @@ describe("DNS preflight checks", () => {
     const result = await checkDkim("example.com", "google", resolver);
     expect(resolver).toHaveBeenCalledWith("google._domainkey.example.com");
     expect(result).toMatchObject({ id: "dkim", pass: true });
+  });
+
+  it("passes DKIM on whichever provider selector has a record", async () => {
+    const resolver = jest.fn(async (name: string) => {
+      if (name === "selector1._domainkey.example.com") return [["v=DKIM1; k=rsa; p=abc"]];
+      throw new Error("ENOTFOUND");
+    });
+    const result = await checkDkimAny("example.com", ["google", "selector1", "zoho"], resolver);
+    expect(result).toMatchObject({ id: "dkim", pass: true });
+    expect(resolver).not.toHaveBeenCalledWith("zoho._domainkey.example.com");
+  });
+
+  it("fails DKIM with a hint when no selector has a record", async () => {
+    const resolver = jest.fn().mockRejectedValue(new Error("ENOTFOUND"));
+    const result = await checkDkimAny("example.com", ["google", "selector1"], resolver);
+    expect(result).toMatchObject({ pass: false });
+    expect(result.detail).toMatch(/DKIM_SELECTOR/);
+  });
+
+  it("tries configured selectors first, then the common ones, without duplicates", () => {
+    const original = process.env.DKIM_SELECTOR;
+    process.env.DKIM_SELECTOR = "mxvault, google";
+    try {
+      const selectors = dkimSelectors();
+      expect(selectors.slice(0, 2)).toEqual(["mxvault", "google"]);
+      expect(selectors.filter((s) => s === "google")).toHaveLength(1);
+      expect(selectors).toContain("hostingermail1");
+    } finally {
+      process.env.DKIM_SELECTOR = original;
+    }
   });
 });

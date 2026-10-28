@@ -164,6 +164,10 @@ inside the web process when `NODE_ENV=production`. Under `npm run dev`, set
 
 ## Deploy to a VPS
 
+The full step-by-step checklist (server, HTTPS, mailboxes and DNS, Claude
+connector, Stripe, backups, updates, troubleshooting) is in
+[DEPLOY.md](DEPLOY.md). In short:
+
 ```bash
 cp .env.example .env   # fill in the secrets, NEXT_PUBLIC_SITE_URL and a strong POSTGRES_PASSWORD
 docker compose up -d --build

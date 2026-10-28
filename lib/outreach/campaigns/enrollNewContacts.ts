@@ -1,4 +1,5 @@
 import { and, asc, eq } from "drizzle-orm";
+import { dkimSelectors } from "@/lib/outreach/preflight";
 import { db } from "@/db/client";
 import { campaignMailboxes, contacts, enrollments, mailboxes, sequenceSteps } from "@/db/schema";
 import { runPoolPreflight, summarizePoolDomains, type PoolPreflightResult } from "@/lib/outreach/preflight/pool";
@@ -76,7 +77,7 @@ export async function planCampaignEnrollment(campaign: CampaignForScheduling): P
   const preflight = await runPoolPreflight({
     senderDomains,
     trustedDomains,
-    dkimSelector: "hostingermail1",
+    dkimSelectors: dkimSelectors(),
     postalAddress: campaign.postalAddress,
     templates: steps.flatMap((step) => [step.subjectTemplate, step.bodyTemplate]),
     // unsubscribe_token is synthesized by the worker at send time (see

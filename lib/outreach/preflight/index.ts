@@ -1,9 +1,10 @@
-import { checkSpf, checkDmarc, checkDkim, type DnsCheckResult, type TxtResolver } from "./dns";
+import { checkSpf, checkDmarc, checkDkimAny, COMMON_DKIM_SELECTORS, type DnsCheckResult, type TxtResolver } from "./dns";
 import { findUnresolvedContacts, type TemplateContact, type UnresolvedContact } from "./templateCheck";
 
 export interface PreflightInput {
   senderDomain: string;
-  dkimSelector: string;
+  /** Tried in order; DKIM passes on the first that has a record. */
+  dkimSelectors: string[];
   postalAddress: string;
   templates: string[];
   contacts: TemplateContact[];
@@ -27,7 +28,7 @@ export async function runPreflight(input: PreflightInput, resolveTxt?: TxtResolv
     : await Promise.all([
         checkSpf(input.senderDomain, resolveTxt),
         checkDmarc(input.senderDomain, resolveTxt),
-        checkDkim(input.senderDomain, input.dkimSelector, resolveTxt),
+        checkDkimAny(input.senderDomain, input.dkimSelectors, resolveTxt),
       ]);
 
   const unresolvedContacts = findUnresolvedContacts(input.templates, input.contacts);
@@ -39,4 +40,13 @@ export async function runPreflight(input: PreflightInput, resolveTxt?: TxtResolv
     unresolvedContacts,
     hasPostalAddress,
   };
+}
+
+/** DKIM_SELECTOR (comma-separated) first, then the common providers' ones. */
+export function dkimSelectors(): string[] {
+  const configured = (process.env.DKIM_SELECTOR ?? "")
+    .split(",")
+    .map((selector) => selector.trim())
+    .filter(Boolean);
+  return [...new Set([...configured, ...COMMON_DKIM_SELECTORS])];
 }

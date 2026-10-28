@@ -15,7 +15,7 @@ const BASE_INPUT = {
   postalAddress: "123 Main St",
   templates: ["Hi {{first_name}}"],
   contacts: [{ id: "c1", email: "a@example.com", fields: { first_name: "Alex" } }],
-  dkimSelector: "default",
+  dkimSelectors: ["default"],
 };
 
 describe("runPoolPreflight", () => {

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { dkimSelectors } from "@/lib/outreach/preflight";
 import { and, asc, eq, sql } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { db } from "@/db/client";
@@ -144,7 +145,7 @@ export default async function CampaignStatusPage({ params }: { params: Promise<{
     const result = await runPoolPreflight({
       senderDomains,
       trustedDomains,
-      dkimSelector: "hostingermail1",
+      dkimSelectors: dkimSelectors(),
       postalAddress: campaign.postalAddress,
       templates: steps.flatMap((step) => [step.subjectTemplate, step.bodyTemplate]),
       contacts: enrolledContacts.map((c) => ({ ...c, fields: { ...c.fields, unsubscribe_token: "placeholder" } })),

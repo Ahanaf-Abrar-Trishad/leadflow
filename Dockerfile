@@ -10,7 +10,10 @@ FROM node:22-alpine AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN npm run build
+# `next build` loads route modules, and db/client.ts refuses to load without
+# DATABASE_URL. A placeholder is enough: the client opens no connection until
+# a query runs, and setting it on the RUN line keeps it out of the image.
+RUN DATABASE_URL=postgres://build:build@127.0.0.1:1/build npm run build
 
 FROM node:22-alpine AS run
 WORKDIR /app

@@ -123,11 +123,14 @@ describe("AI drafts (integration)", () => {
       expect(client.getInstructions()).toMatch(/untrusted/);
       const { tools } = await client.listTools();
       expect(tools.map((tool) => tool.name).sort()).toEqual([
+        "get_deal_context",
         "get_lead_research",
         "get_queue_status",
+        "list_deals_needing_proposal",
         "list_leads_needing_icebreaker",
         "list_replies_to_triage",
         "save_icebreaker_draft",
+        "save_proposal_draft",
         "triage_reply",
       ]);
 
@@ -145,7 +148,7 @@ describe("AI drafts (integration)", () => {
       expect(saved.isError).toBeFalsy();
 
       const status = await client.callTool({ name: "get_queue_status", arguments: {} });
-      expect(JSON.parse((status.content as { text: string }[])[0].text)).toEqual({ repliesToTriage: 0, leadsNeedingIcebreaker: 0, draftsAwaitingReview: 1 });
+      expect(JSON.parse((status.content as { text: string }[])[0].text)).toEqual({ repliesToTriage: 0, dealsNeedingProposal: 0, leadsNeedingIcebreaker: 0, draftsAwaitingReview: 1 });
 
       const [draft] = await db.select().from(aiDrafts);
       expect(draft).toMatchObject({ leadId: bright.id, status: "pending", content: LINE });

@@ -15,8 +15,8 @@ everything before it goes out.
 | 2. Lead ingest: Google Maps scrapes, website email finder, Scout/CSV import, lead list, add leads to campaigns | ✅ Done |
 | 3. AI icebreakers through a Claude connector (MCP, your own Claude subscription) and an approval queue | ✅ Done |
 | 4. Reply triage and answer drafts by Claude, sales pipeline board | ✅ Done |
-| 5. Proposals with a public accept link | ⏳ Next |
-| 6. Payments (gateway to be decided) and onboarding | Planned |
+| 5. Proposals: Claude drafts the wording, you price it, the client e-signs on a private link | ✅ Done |
+| 6. Payments (gateway to be decided) and onboarding | ⏳ Next |
 | 7. WhatsApp channel | Planned |
 
 ## Leads
@@ -88,6 +88,29 @@ An interested reply (or **Add to pipeline** on any thread) creates a deal
 on the **Pipeline** board: Replied, Call booked, Proposal, Won, Lost. Each
 deal carries a value in USD, notes, a lost reason, and a link back to the
 conversation. One deal per contact.
+
+## Proposals
+
+Open **Proposal** on a deal in the Pipeline (or let Claude draft one: the
+connector lists deals at Call booked or Proposal that have none, reads the
+conversation, your deal notes and the website snapshot, and saves the
+wording). Claude never sets prices; you price every line item (one-time or
+monthly) in the editor, and a proposal cannot go out until every item is
+priced.
+
+**Send in conversation** emails the link in the deal's existing thread;
+**Make live and copy link** lets you share it yourself. The client sees the
+proposal at `/p/<signed token>`, types their name and email, ticks "I agree"
+and presses Accept. LeadFlow stores the signer's name, email, time, IP
+address and browser, plus an exact copy of the proposal as signed, and moves
+the deal to Won. The client can also decline with a reason.
+
+Back to draft (to change something) or Withdraw both revoke every link
+already sent. Set `AGENCY_NAME` to show your agency on proposals.
+
+This is a simple click-to-accept electronic signature with a consent
+statement and an audit record. Have a lawyer review your terms and whether
+it is enough for your contracts.
 
 ## Run it locally
 

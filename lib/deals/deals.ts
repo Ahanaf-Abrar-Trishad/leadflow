@@ -50,7 +50,12 @@ export async function updateDeal(id: string, patch: DealPatch): Promise<boolean>
   await db
     .update(deals)
     .set({
-      ...patch,
+      // Named fields only, so no extra property on the caller's object can
+      // reach the row.
+      ...(patch.stage !== undefined ? { stage: patch.stage } : {}),
+      ...(patch.valueUsd !== undefined ? { valueUsd: patch.valueUsd } : {}),
+      ...(patch.notes !== undefined ? { notes: patch.notes } : {}),
+      ...(patch.lostReason !== undefined ? { lostReason: patch.lostReason } : {}),
       ...(patch.stage && patch.stage !== current.stage ? { stageChangedAt: now } : {}),
       // A reason only means something on a lost deal.
       ...(patch.stage && patch.stage !== "lost" ? { lostReason: null } : {}),

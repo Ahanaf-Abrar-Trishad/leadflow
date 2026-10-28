@@ -53,6 +53,21 @@ export function DealCard({ deal }: { deal: DealCardData }) {
     }
   };
 
+  const openProposal = async () => {
+    setSaving(true);
+    try {
+      const response = await fetch(`/api/outreach/deals/${deal.id}/proposal`, { method: "POST" });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok || !body.id) {
+        showToast("error", "Could not open a proposal for this deal.");
+        return;
+      }
+      router.push(`/outreach/proposals/${body.id}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const parsedValue = value.trim() === "" ? null : Number(value);
   const valueValid = parsedValue === null || (Number.isInteger(parsedValue) && parsedValue >= 0);
   const days = daysSince(deal.stageChangedAt);
@@ -103,9 +118,16 @@ export function DealCard({ deal }: { deal: DealCardData }) {
         ) : (
           <span />
         )}
-        <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="text-ink-muted hover:text-ink">
-          {open ? "Close" : "Details"}
-        </button>
+        <span className="flex gap-3">
+          {deal.stage !== "lost" && (
+            <button type="button" disabled={saving} onClick={openProposal} className="text-signal-strong hover:underline">
+              Proposal
+            </button>
+          )}
+          <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="text-ink-muted hover:text-ink">
+            {open ? "Close" : "Details"}
+          </button>
+        </span>
       </div>
 
       {open && (

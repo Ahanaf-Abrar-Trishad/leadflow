@@ -363,3 +363,74 @@ export const deals = pgTable(
   },
   (table) => [uniqueIndex("deals_contact_idx").on(table.contactId), index("deals_stage_idx").on(table.stage)],
 );
+
+export interface ProposalSection {
+  heading: string;
+  body: string;
+}
+
+/** amountUsd is null until the operator prices it - Claude never sets prices. */
+export interface ProposalLineItem {
+  description: string;
+  amountUsd: number | null;
+  billing: "one_time" | "monthly";
+}
+
+/** What the client saw and agreed to, frozen at the moment of acceptance. */
+export interface ProposalSnapshot {
+  title: string;
+  summary: string;
+  sections: ProposalSection[];
+  lineItems: ProposalLineItem[];
+  terms: string;
+  validUntil: string | null;
+}
+
+/** A priced proposal for a deal, accepted by the client on a public signed
+ * link (/p/[token], lib/proposals). Content is editable only while "draft";
+ * the link works only while "sent", and bumping linkVersion revokes every
+ * link handed out before.
+ * status: "draft" | "sent" | "accepted" | "declined" | "withdrawn"
+ * draftedBy: "claude" | "operator" */
+export const proposals = pgTable(
+  "proposals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    dealId: uuid("deal_id")
+      .notNull()
+      .references(() => deals.id, { onDelete: "cascade" }),
+    status: text("status").notNull().default("draft"),
+    title: text("title").notNull(),
+    summary: text("summary").notNull().default(""),
+    sections: jsonb("sections").notNull().default([]).$type<ProposalSection[]>(),
+    lineItems: jsonb("line_items").notNull().default([]).$type<ProposalLineItem[]>(),
+    terms: text("terms").notNull().default(""),
+    validUntil: timestamp("valid_until", { withTimezone: true }),
+    linkVersion: integer("link_version").notNull().default(1),
+    draftedBy: text("drafted_by").notNull().default("operator"),
+    /** Once an operator edits a Claude draft, Claude may no longer overwrite it. */
+    editedByOperator: boolean("edited_by_operator").notNull().default(false),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    firstViewedAt: timestamp("first_viewed_at", { withTimezone: true }),
+    lastViewedAt: timestamp("last_viewed_at", { withTimezone: true }),
+    viewCount: integer("view_count").notNull().default(0),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+    signerName: text("signer_name"),
+    signerEmail: text("signer_email"),
+    signerIp: text("signer_ip"),
+    signerUserAgent: text("signer_user_agent"),
+    signedSnapshot: jsonb("signed_snapshot").$type<ProposalSnapshot>(),
+    declinedAt: timestamp("declined_at", { withTimezone: true }),
+    declineReason: text("decline_reason"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    // At most one live proposal per deal; accepted, declined and withdrawn
+    // ones stay as history.
+    uniqueIndex("proposals_one_open_per_deal_idx")
+      .on(table.dealId)
+      .where(sql`${table.status} in ('draft', 'sent')`),
+    index("proposals_deal_idx").on(table.dealId),
+  ],
+);

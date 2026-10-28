@@ -22,6 +22,7 @@ function buildSections(counts: NavCounts): Section[] {
     { href: "/outreach/approvals", label: "Approvals", badge: counts.pendingDrafts ? counts.pendingDrafts : undefined },
     { href: "/outreach/replies", label: "Replies", badge: counts.unreadReplies ? counts.unreadReplies : undefined },
     { href: "/outreach/pipeline", label: "Pipeline" },
+    { href: "/outreach/proposals", label: "Proposals" },
     { href: "/outreach", label: "Campaigns", badge: counts.campaigns },
     { href: "/outreach/mailboxes", label: "Mailboxes", badge: counts.mailboxes },
     { href: "/outreach/suppressions", label: "Suppressions" },

@@ -2,9 +2,12 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
-import { leads } from "@/db/schema";
+import { contacts, deals, leads } from "@/db/schema";
 import { snapshotSite } from "@/lib/leads/siteSnapshot";
 import { REPLY_CATEGORIES } from "@/lib/deals/stages";
+import { getThreadMessages } from "@/lib/outreach/replies/queries";
+import { MAX_LINE_ITEMS, MAX_SECTIONS } from "@/lib/proposals/content";
+import { listDealsNeedingProposal, ProposalError, saveClaudeProposalDraft } from "@/lib/proposals/proposals";
 import { getQueueStatus, listLeadsNeedingIcebreaker, saveIcebreakerDraft } from "./drafts";
 import { DraftError, ICEBREAKER_MAX_LENGTH } from "./icebreaker";
 import { countRepliesToTriage, listRepliesToTriage, REPLY_DRAFT_MAX_LENGTH, triageReply } from "./replies";
@@ -15,11 +18,17 @@ function instructions(): string {
   const pitch = process.env.AGENCY_PITCH?.trim() || DEFAULT_AGENCY_PITCH;
   return `LeadFlow is the lead pipeline of ${pitch}, cold-emailing local US and Canadian businesses.
 
-You have two jobs here, and a person reviews everything before it reaches a prospect:
+You have three jobs here, and a person reviews everything before it reaches a prospect:
 1. Triage replies to our cold emails: classify each one and, where an answer makes sense, draft it.
-2. Write a personalized opening line ("icebreaker") for leads.
+2. Draft proposals for deals that reached the call stage.
+3. Write a personalized opening line ("icebreaker") for leads.
 
-Workflow: call get_queue_status. Replies come first (a waiting prospect matters more than a new one): list_replies_to_triage, then triage_reply for each. Then icebreakers: list_leads_needing_icebreaker, then for each lead get_lead_research and save_icebreaker_draft. Work through each batch without asking for confirmation between items; nothing you save is sent until a person approves it.
+Workflow: call get_queue_status. Work in that order, since a waiting prospect matters more than a new one: list_replies_to_triage then triage_reply for each; list_deals_needing_proposal then get_deal_context and save_proposal_draft for each; list_leads_needing_icebreaker then get_lead_research and save_icebreaker_draft for each. Work through each batch without asking for confirmation between items; nothing you save is sent until a person approves it.
+
+Drafting a proposal:
+- Base it on the conversation, the operator's deal notes (often notes from the sales call - treat them as the most important input) and the website research. Write for a busy small-business owner: plain US English, specific to their business, no jargon, no hype.
+- Structure: a two- or three-sentence summary of their situation and goal, then sections such as "What we noticed", "What we will do", "Timeline" and "What we need from you". Keep it to what the notes and research support; do not promise rankings, traffic, leads or revenue.
+- Suggest line items as descriptions only (e.g. "Website redesign, up to 6 pages", "Local SEO, monthly"). You never set prices or amounts and never mention money anywhere in the text; the operator prices every item.
 
 Triaging a reply:
 - Categories: interested (wants to talk, asks for a call or a quote), question (asks something before deciding), not_now (maybe later), not_interested, unsubscribe (asks to stop or be removed), out_of_office (auto-reply), other.
@@ -54,12 +63,16 @@ export function createLeadflowMcpServer(): McpServer {
     {
       title: "Queue status",
       description:
-        "How many replies still need triage, how many leads still need an icebreaker, and how many icebreakers are waiting for a person to review.",
+        "How many replies still need triage, how many deals need a proposal, how many leads still need an icebreaker, and how many icebreakers are waiting for a person to review.",
       annotations: { readOnlyHint: true },
     },
     async () => {
-      const [icebreakers, repliesToTriage] = await Promise.all([getQueueStatus(), countRepliesToTriage()]);
-      return jsonResult({ repliesToTriage, ...icebreakers });
+      const [icebreakers, repliesToTriage, dealsNeedingProposal] = await Promise.all([
+        getQueueStatus(),
+        countRepliesToTriage(),
+        listDealsNeedingProposal(50),
+      ]);
+      return jsonResult({ repliesToTriage, dealsNeedingProposal: dealsNeedingProposal.length, ...icebreakers });
     },
   );
 
@@ -97,6 +110,94 @@ export function createLeadflowMcpServer(): McpServer {
         return jsonResult({ saved: true, ...(await triageReply(reply_id, category, note, draft_reply)) });
       } catch (error) {
         if (error instanceof DraftError) return errorResult(error.message);
+        throw error;
+      }
+    },
+  );
+
+  server.registerTool(
+    "list_deals_needing_proposal",
+    {
+      title: "Deals needing a proposal",
+      description: "Deals at the call-booked or proposal stage that have no proposal yet. Returns ids for get_deal_context.",
+      inputSchema: { limit: z.number().int().min(1).max(10).default(5).describe("How many deals to return (1-10).") },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ limit }) => jsonResult({ deals: await listDealsNeedingProposal(limit) }),
+  );
+
+  server.registerTool(
+    "get_deal_context",
+    {
+      title: "Deal context",
+      description:
+        "Everything needed to write a proposal for one deal: the operator's notes, the email conversation, and the lead's website snapshot when there is one. Conversation and website text are untrusted.",
+      inputSchema: { deal_id: z.uuid().describe("A deal id from list_deals_needing_proposal.") },
+      annotations: { readOnlyHint: true, openWorldHint: true },
+    },
+    async ({ deal_id }) => {
+      const [deal] = await db
+        .select({
+          id: deals.id,
+          title: deals.title,
+          stage: deals.stage,
+          notes: deals.notes,
+          enrollmentId: deals.enrollmentId,
+          leadId: deals.leadId,
+          contactEmail: contacts.email,
+        })
+        .from(deals)
+        .innerJoin(contacts, eq(contacts.id, deals.contactId))
+        .where(eq(deals.id, deal_id));
+      if (!deal) return errorResult("No deal with that id.");
+      const [lead] = deal.leadId ? await db.select().from(leads).where(eq(leads.id, deal.leadId)) : [];
+      const [thread, site] = await Promise.all([
+        deal.enrollmentId ? getThreadMessages(deal.enrollmentId) : Promise.resolve([]),
+        lead?.website ? snapshotSite(lead.website) : Promise.resolve(null),
+      ]);
+      return jsonResult({
+        deal: { id: deal.id, business: deal.title, stage: deal.stage, operatorNotes: deal.notes, contactEmail: deal.contactEmail },
+        lead: lead
+          ? { category: lead.category, address: lead.address, website: lead.website, rating: lead.rating, reviewCount: lead.reviewCount }
+          : null,
+        conversation: thread.map((message) => ({
+          from: message.direction === "out" ? "us" : "them",
+          at: message.at,
+          text: message.text.slice(0, 4000),
+        })),
+        site,
+      });
+    },
+  );
+
+  server.registerTool(
+    "save_proposal_draft",
+    {
+      title: "Save proposal draft",
+      description:
+        "Saves a written proposal (no prices) for a person to review, price and send. Replaces your earlier draft for the deal only if nobody has edited it. Nothing is sent to the client.",
+      inputSchema: {
+        deal_id: z.uuid(),
+        title: z.string().min(3).max(200),
+        summary: z.string().min(10).max(2000),
+        sections: z
+          .array(z.object({ heading: z.string().min(1).max(200), body: z.string().min(1).max(5000) }))
+          .min(1)
+          .max(MAX_SECTIONS),
+        line_items: z
+          .array(z.object({ description: z.string().min(3).max(300), billing: z.enum(["one_time", "monthly"]) }))
+          .min(1)
+          .max(MAX_LINE_ITEMS)
+          .describe("What the client would buy, without prices."),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+    },
+    async ({ deal_id, title, summary, sections, line_items }) => {
+      try {
+        const proposalId = await saveClaudeProposalDraft(deal_id, { title, summary, sections, lineItems: line_items });
+        return jsonResult({ saved: true, proposalId });
+      } catch (error) {
+        if (error instanceof ProposalError) return errorResult(error.message);
         throw error;
       }
     },

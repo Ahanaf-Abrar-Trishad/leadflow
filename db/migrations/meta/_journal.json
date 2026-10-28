@@ -71,6 +71,13 @@
       "when": 1793164933670,
       "tag": "0009_round_spyke",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793165782425,
+      "tag": "0010_nappy_whistler",
+      "breakpoints": true
     }
   ]
 }

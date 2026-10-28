@@ -12,5 +12,9 @@ pipeline. See README.md for the stage roadmap.
 - Auth: every `/outreach` and `/api/outreach` route is gated in `proxy.ts`.
   Any new public page (proposal link, payment page) must be added there
   deliberately and protected by its own signed token, like unsubscribe.
-- Never send email without operator approval; the AI only drafts.
+- `/api/mcp/[token]` is the one deliberately public API route: Claude's
+  connector, guarded by MCP_ACCESS_TOKEN in the path (lib/ai/mcpAuth.ts).
+  Its tools may read leads and save drafts, never send or change campaigns.
+- Never send email without operator approval; the AI only drafts. AI text
+  reaches a prospect only through an approved `ai_drafts` row.
 - Run `npm run verify` before calling a change done.

@@ -10,6 +10,7 @@ import {
   index,
   doublePrecision,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 /** provider: "smtp" | "gmail_oauth" (only "smtp" is used until Phase 3) */
 /** health: "healthy" | "degraded" | "paused" */
@@ -282,6 +283,9 @@ export const leads = pgTable(
     score: integer("score").notNull().default(0),
     status: text("status").notNull().default("new"),
     contactId: uuid("contact_id").references(() => contacts.id, { onDelete: "set null" }),
+    /** The operator-approved opening line, available to templates as
+     * {{icebreaker}}. Only ever set by approving an ai_drafts row. */
+    icebreaker: text("icebreaker"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -289,5 +293,36 @@ export const leads = pgTable(
     uniqueIndex("leads_dedupe_key_idx").on(table.dedupeKey),
     index("leads_scrape_job_idx").on(table.scrapeJobId),
     index("leads_created_at_idx").on(table.createdAt),
+  ],
+);
+
+/** Text Claude drafted for a lead through the MCP server, waiting for an
+ * operator. Nothing Claude writes reaches a prospect until it is approved
+ * here (lib/ai/drafts.ts). One pending draft per lead and kind - a newer
+ * draft replaces the pending one.
+ * kind: "icebreaker"
+ * status: "pending" | "approved" | "rejected" */
+export const aiDrafts = pgTable(
+  "ai_drafts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    leadId: uuid("lead_id")
+      .notNull()
+      .references(() => leads.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull().default("icebreaker"),
+    content: text("content").notNull(),
+    /** What Claude based the draft on, shown to the reviewer. */
+    observations: text("observations").notNull().default(""),
+    status: text("status").notNull().default("pending"),
+    /** True when the operator changed the text before approving. */
+    edited: boolean("edited").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("ai_drafts_one_pending_idx")
+      .on(table.leadId, table.kind)
+      .where(sql`${table.status} = 'pending'`),
+    index("ai_drafts_status_idx").on(table.status, table.createdAt),
   ],
 );

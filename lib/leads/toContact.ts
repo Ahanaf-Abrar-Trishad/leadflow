@@ -6,10 +6,12 @@ type LeadRow = typeof leads.$inferSelect;
 
 /**
  * Merge fields a lead brings into a campaign, usable in templates as
- * {{company}}, {{greeting}}, {{website}} etc. A field is only set when the
- * lead actually has the value, so campaign preflight can flag a template
- * that uses one of them for a lead that lacks it. {{greeting}} is always
- * set: the contact's first name when known, otherwise "there".
+ * {{company}}, {{greeting}}, {{website}}, {{icebreaker}} etc. A field is only
+ * set when the lead actually has the value, so campaign preflight can flag a
+ * template that uses one of them for a lead that lacks it - a template with
+ * {{icebreaker}} holds back every lead whose line is not approved yet.
+ * {{greeting}} is always set: the contact's first name when known,
+ * otherwise "there".
  */
 export function leadMergeFields(lead: LeadRow): Record<string, string> {
   const firstName = lead.contactName?.trim().split(/\s+/)[0];
@@ -27,6 +29,7 @@ export function leadMergeFields(lead: LeadRow): Record<string, string> {
     address: lead.address,
     rating: lead.rating,
     review_count: lead.reviewCount,
+    icebreaker: lead.icebreaker,
   };
   for (const [key, value] of Object.entries(optional)) {
     if (value !== null && value !== undefined && String(value).trim() !== "") fields[key] = String(value);

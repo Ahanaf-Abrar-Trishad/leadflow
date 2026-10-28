@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/outreach/auth/currentUser";
 import { RailNav } from "@/components/outreach/RailNav";
 import { getWorkerHeartbeats } from "@/lib/outreach/dashboard/queries";
 import { getUnhandledReplyCount } from "@/lib/outreach/replies/queries";
+import { countPendingDrafts } from "@/lib/ai/drafts";
 import "./outreach-theme.css";
 
 const barlow = Barlow({
@@ -27,13 +28,17 @@ export default async function OutreachLayout({ children }: { children: React.Rea
   // the console shell below.
   if (!user) return <>{children}</>;
 
-  const [heartbeats, unreadReplies] = await Promise.all([getWorkerHeartbeats(), getUnhandledReplyCount()]);
+  const [heartbeats, unreadReplies, pendingDrafts] = await Promise.all([
+    getWorkerHeartbeats(),
+    getUnhandledReplyCount(),
+    countPendingDrafts(),
+  ]);
 
   return (
     <div
       className={`outreach-theme ${barlow.variable} ${barlowCondensed.variable} flex min-h-dvh w-full bg-paper font-sans text-ink`}
     >
-      <RailNav user={user} heartbeats={heartbeats} counts={{ unreadReplies }} />
+      <RailNav user={user} heartbeats={heartbeats} counts={{ unreadReplies, pendingDrafts }} />
       <div className="flex min-w-0 flex-1 flex-col">{children}</div>
     </div>
   );

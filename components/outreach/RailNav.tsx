@@ -13,10 +13,13 @@ interface Section {
   badge?: string | number;
 }
 
-function buildSections(counts: { campaigns?: number; mailboxes?: number; unreadReplies?: number }): Section[] {
+type NavCounts = { campaigns?: number; mailboxes?: number; unreadReplies?: number; pendingDrafts?: number };
+
+function buildSections(counts: NavCounts): Section[] {
   return [
     { href: "/outreach/dashboard", label: "Dashboard" },
     { href: "/outreach/leads", label: "Leads" },
+    { href: "/outreach/approvals", label: "Approvals", badge: counts.pendingDrafts ? counts.pendingDrafts : undefined },
     { href: "/outreach/replies", label: "Replies", badge: counts.unreadReplies ? counts.unreadReplies : undefined },
     { href: "/outreach", label: "Campaigns", badge: counts.campaigns },
     { href: "/outreach/mailboxes", label: "Mailboxes", badge: counts.mailboxes },
@@ -24,6 +27,11 @@ function buildSections(counts: { campaigns?: number; mailboxes?: number; unreadR
     { href: "/outreach/events", label: "Events" },
   ];
 }
+
+const ADMIN_LINKS = [
+  { href: "/outreach/settings/claude", label: "Connect Claude" },
+  { href: "/outreach/settings/users", label: "Users" },
+];
 
 function formatAge(secondsAgo: number | null): string {
   if (secondsAgo === null) return "never";
@@ -34,7 +42,7 @@ function formatAge(secondsAgo: number | null): string {
 export interface RailNavProps {
   user: SessionUser;
   heartbeats: { worker: HeartbeatStatus; poller: HeartbeatStatus };
-  counts?: { campaigns?: number; mailboxes?: number; unreadReplies?: number };
+  counts?: NavCounts;
 }
 
 /*
@@ -91,28 +99,27 @@ export function RailNav({ user, heartbeats, counts = {} }: RailNavProps) {
             </Link>
           );
         })}
-        {user.role === "admin" && (
-          <Link
-            href="/outreach/settings/users"
-            aria-current={pathname === "/outreach/settings/users" ? "page" : undefined}
-            className={cn(
-              "flex items-center gap-2.5 border-l-2 px-2.5 py-1.5 text-[13.5px] tracking-[0.01em]",
-              "transition-colors duration-200 ease-out",
-              pathname === "/outreach/settings/users"
-                ? "border-signal bg-signal-soft text-signal-strong"
-                : "border-transparent text-ink-muted hover:bg-paper hover:text-ink",
-            )}
-          >
-            <span
-              aria-hidden="true"
+        {user.role === "admin" &&
+          ADMIN_LINKS.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              aria-current={pathname === link.href ? "page" : undefined}
               className={cn(
-                "h-1.5 w-1.5 flex-none rotate-45",
-                pathname === "/outreach/settings/users" ? "bg-signal" : "bg-ink-faint",
+                "flex items-center gap-2.5 border-l-2 px-2.5 py-1.5 text-[13.5px] tracking-[0.01em]",
+                "transition-colors duration-200 ease-out",
+                pathname === link.href
+                  ? "border-signal bg-signal-soft text-signal-strong"
+                  : "border-transparent text-ink-muted hover:bg-paper hover:text-ink",
               )}
-            />
-            <span className="flex-1">Users</span>
-          </Link>
-        )}
+            >
+              <span
+                aria-hidden="true"
+                className={cn("h-1.5 w-1.5 flex-none rotate-45", pathname === link.href ? "bg-signal" : "bg-ink-faint")}
+              />
+              <span className="flex-1">{link.label}</span>
+            </Link>
+          ))}
       </nav>
 
       <div className="mt-auto border-t border-border p-3">

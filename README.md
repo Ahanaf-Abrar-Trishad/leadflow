@@ -13,8 +13,8 @@ everything before it goes out.
 |---|---|
 | 1. Foundation: outreach engine (mailboxes, 5-step sequences, follow-ups, reply and bounce detection, unsubscribe and suppression, multi-user) | ✅ Done (carried over from PPC-Tools) |
 | 2. Lead ingest: Google Maps scrapes, website email finder, Scout/CSV import, lead list, add leads to campaigns | ✅ Done |
-| 3. AI personalization and approval queue (Claude via MCP, using a Claude subscription) | ⏳ Next |
-| 4. Reply classification and deal pipeline | Planned |
+| 3. AI icebreakers through a Claude connector (MCP, your own Claude subscription) and an approval queue | ✅ Done |
+| 4. Reply classification and deal pipeline | ⏳ Next |
 | 5. Proposals with a public accept link | Planned |
 | 6. Payments (gateway to be decided) and onboarding | Planned |
 | 7. WhatsApp channel | Planned |
@@ -44,10 +44,35 @@ fields become available in templates:
 | `{{greeting}}` | Contact's first name, or "there" (always set) |
 | `{{first_name}}`, `{{full_name}}` | Only when a person's name is known |
 | `{{website}}`, `{{domain}}`, `{{category}}`, `{{phone}}`, `{{address}}`, `{{rating}}`, `{{review_count}}` | When the lead has them |
+| `{{icebreaker}}` | Once you approve Claude's opening line for the lead |
 
 Campaign preflight flags any lead missing a field a template uses. A Maps
 lead's timezone carries over, so business-hours sending is in the lead's
 local time.
+
+## Claude icebreakers
+
+LeadFlow exposes an MCP connector that Claude (Cowork, claude.ai, the
+desktop app or Claude Code) uses with your own Claude subscription; no API
+key is involved.
+
+1. Set `MCP_ACCESS_TOKEN` in `.env` (32+ characters, see `.env.example`) and
+   `NEXT_PUBLIC_SITE_URL` to the app's public HTTPS address, then restart.
+2. Open **Connect Claude** (admins only) for the connector URL and the
+   Claude Code command, and add it to Claude as a custom connector.
+3. Ask Claude to draft icebreakers with the LeadFlow connector, or schedule
+   that as a daily Cowork task (the page has a ready prompt).
+
+Claude lists leads that have an email but no icebreaker, reads a snapshot of
+each homepage (HTTPS, speed, mobile viewport, meta description, copyright
+year, platform, analytics and ad tracking), and saves a one- or two-sentence
+draft with the facts it used. Drafts wait in **Approvals**, where you
+approve, edit or reject each one. Only an approved line becomes the lead's
+`{{icebreaker}}`; a campaign template that uses `{{icebreaker}}` holds back
+every lead without one at preflight.
+
+The connector URL carries the secret; anyone with it can read lead data and
+submit drafts (never send). Rotate it by changing `MCP_ACCESS_TOKEN`.
 
 ## Run it locally
 

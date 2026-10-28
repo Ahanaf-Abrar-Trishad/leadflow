@@ -28,13 +28,27 @@ export interface PageFetcherOptions {
   lookup?: AddressLookup;
 }
 
+export interface FetchedPage {
+  html: string;
+  /** Where the redirects ended up. */
+  finalUrl: string;
+  /** Time to the final response's headers, redirects included. */
+  responseMs: number;
+}
+
+/** The page's HTML, or null if it could not be fetched safely. */
+export async function fetchPublicPage(url: string, options: PageFetcherOptions = {}): Promise<string | null> {
+  return (await fetchPublicPageDetailed(url, options))?.html ?? null;
+}
+
 /**
  * GETs a page from a lead's website. Every hop, redirects included, must
  * resolve to a public address on port 80/443: the URL came from a scrape,
  * so it must never become a way to reach this server's own network.
  */
-export async function fetchPublicPage(url: string, options: PageFetcherOptions = {}): Promise<string | null> {
+export async function fetchPublicPageDetailed(url: string, options: PageFetcherOptions = {}): Promise<FetchedPage | null> {
   const fetchImpl = options.fetchImpl ?? fetch;
+  const started = Date.now();
   let current = new URL(url);
 
   for (let hop = 0; hop <= MAX_REDIRECTS; hop += 1) {
@@ -66,7 +80,8 @@ export async function fetchPublicPage(url: string, options: PageFetcherOptions =
     if (!response.ok) return null;
     const type = response.headers.get("content-type") ?? "";
     if (type && !type.includes("html") && !type.includes("text")) return null;
-    return readCapped(response);
+    const responseMs = Date.now() - started;
+    return { html: await readCapped(response), finalUrl: current.href, responseMs };
   }
   return null;
 }

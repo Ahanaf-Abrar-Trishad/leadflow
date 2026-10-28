@@ -203,6 +203,11 @@ export function LeadsTable({ rows, campaigns }: { rows: LeadRow[]; campaigns: Ca
                     <p className="truncate text-xs text-ink-faint">
                       {[SOURCE_LABELS[row.source] ?? row.source, row.category, row.contactName].filter(Boolean).join(" · ")}
                     </p>
+                    {row.icebreaker && (
+                      <p className="truncate text-xs text-signal-strong" title={row.icebreaker}>
+                        Icebreaker approved
+                      </p>
+                    )}
                   </div>
                 </Td>
                 <Td>

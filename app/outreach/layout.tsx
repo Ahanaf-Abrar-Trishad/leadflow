@@ -36,7 +36,7 @@ export default async function OutreachLayout({ children }: { children: React.Rea
 
   return (
     <div
-      className={`outreach-theme ${barlow.variable} ${barlowCondensed.variable} flex min-h-dvh w-full bg-paper font-sans text-ink`}
+      className={`outreach-theme ${barlow.variable} ${barlowCondensed.variable} flex min-h-dvh w-full flex-col bg-paper font-sans text-ink lg:flex-row`}
     >
       <RailNav user={user} heartbeats={heartbeats} counts={{ unreadReplies, pendingDrafts }} />
       <div className="flex min-w-0 flex-1 flex-col">{children}</div>

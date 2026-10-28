@@ -37,7 +37,7 @@ export default async function UnsubscribePage({ params }: { params: Promise<{ to
     <main
       id="main-content"
       tabIndex={-1}
-      className="ambient-wash mx-auto max-w-lg px-4 py-20 text-center outline-none sm:px-6"
+      className="ambient-wash mx-auto w-full max-w-lg px-4 py-20 text-center outline-none sm:px-6"
     >
       <span
         aria-hidden="true"

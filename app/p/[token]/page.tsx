@@ -23,7 +23,7 @@ export default async function PublicProposalPage({ params }: { params: Promise<{
 
   if (!proposal) {
     return (
-      <main id="main-content" className="mx-auto max-w-lg px-4 py-20 text-center">
+      <main id="main-content" className="mx-auto w-full max-w-lg px-4 py-20 text-center">
         <h1 className="font-display text-2xl font-bold text-ink">This link is no longer valid</h1>
         <p className="mt-3 text-sm text-ink-muted">
           The proposal may have been updated or withdrawn. Reply to our last email and we will send you the current one.
@@ -39,7 +39,7 @@ export default async function PublicProposalPage({ params }: { params: Promise<{
   const due = proposal.status === "accepted" ? await firstOpenInvoice(proposal.dealId) : null;
 
   return (
-    <main id="main-content" className="px-4 py-10 sm:py-16">
+    <main id="main-content" className="w-full px-4 py-10 sm:py-16">
       <ProposalDocument
         title={proposal.title}
         summary={proposal.summary}

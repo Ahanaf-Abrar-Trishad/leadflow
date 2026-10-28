@@ -39,7 +39,11 @@ export default function RootLayout({
         className={`${geist.variable} ${manrope.variable} ${jetbrainsMono.variable} font-sans antialiased`}
       >
         <div aria-hidden="true" className="page-grain" />
-        <div className="flex min-h-dvh flex-col">{children}</div>
+        {/* overflow-x-clip: decorative glows (.ambient-wash) bleed past the
+            right edge by design; clip them at the screen edge instead of
+            letting them widen the page. Clip, not hidden, so sticky headers
+            keep working. */}
+        <div className="flex min-h-dvh flex-col overflow-x-clip">{children}</div>
         <ToastViewport />
       </body>
     </html>

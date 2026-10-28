@@ -24,7 +24,10 @@ export function PageShell({ width = "prose", children }: PageShellProps) {
     <main
       id="main-content"
       tabIndex={-1}
-      className={cn("mx-auto px-4 pb-20 pt-10 outline-none sm:px-6", WIDTHS[width])}
+      // w-full: the console's content column is a flex column, where mx-auto
+      // alone sizes main to its widest child - a wide table then stretches
+      // the whole page past a phone's width instead of scrolling in its card.
+      className={cn("mx-auto w-full px-4 pb-20 pt-10 outline-none sm:px-6", WIDTHS[width])}
     >
       {children}
     </main>

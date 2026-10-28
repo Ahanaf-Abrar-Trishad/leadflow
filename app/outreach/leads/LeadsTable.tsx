@@ -165,7 +165,58 @@ export function LeadsTable({ rows, campaigns }: { rows: LeadRow[]; campaigns: Ca
         </div>
       )}
 
-      <BlueprintCard noPadding className="overflow-x-auto">
+      {/* Phones: one card per lead instead of a nine-column table. */}
+      <div className="flex flex-col gap-2 md:hidden">
+        <button
+          type="button"
+          onClick={() => setSelected(allSelected ? new Set() : new Set(rows.map((row) => row.id)))}
+          className="self-start text-sm text-signal-strong"
+        >
+          {allSelected ? "Deselect all" : "Select all on this page"}
+        </button>
+        <ul className="flex flex-col gap-2">
+          {rows.map((row) => (
+            <li key={row.id} className="blueprint flex gap-3 p-3">
+              <div className="pt-1">
+                <SelectBox
+                  checked={selected.has(row.id)}
+                  label={selected.has(row.id) ? `Deselect ${row.name}` : `Select ${row.name}`}
+                  onToggle={() => toggle(row.id)}
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="min-w-0 font-medium text-ink">{row.name}</p>
+                  <span className="flex-none font-mono text-sm font-semibold text-ink" aria-label={`Score ${row.score}`}>
+                    {row.score}
+                  </span>
+                </div>
+                <p className="truncate text-xs text-ink-faint">
+                  {[SOURCE_LABELS[row.source] ?? row.source, row.category].filter(Boolean).join(" · ")}
+                  {row.rating !== null ? ` · ${row.rating.toFixed(1)} (${row.reviewCount ?? 0})` : ""}
+                </p>
+                <p className="mt-1 break-all text-sm text-ink">{row.email ?? <span className="text-ink-faint">No email</span>}</p>
+                <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                  {row.phone && (
+                    <a href={`tel:${row.phone.replace(/[^\d+]/g, "")}`} className="text-ink-muted">
+                      {row.phone}
+                    </a>
+                  )}
+                  {row.website && (
+                    <a href={row.website} target="_blank" rel="noopener noreferrer nofollow" className="truncate text-signal-strong">
+                      {displayHost(row.website)}
+                    </a>
+                  )}
+                  <StatusBadge status={row.status} />
+                </div>
+                {row.icebreaker && <p className="mt-1 text-xs text-signal-strong">Icebreaker approved</p>}
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <BlueprintCard noPadding className="hidden overflow-x-auto md:block">
         <Table style={{ minWidth: 980 }}>
           <thead>
             <tr>

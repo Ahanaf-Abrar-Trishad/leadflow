@@ -15,7 +15,7 @@ export default async function IntakePage({ params }: { params: Promise<{ token: 
   const onboarding = await getOnboardingByIntakeToken(token);
   if (!onboarding) {
     return (
-      <main id="main-content" className="mx-auto max-w-lg px-4 py-20 text-center">
+      <main id="main-content" className="mx-auto w-full max-w-lg px-4 py-20 text-center">
         <h1 className="font-display text-2xl font-bold text-ink">This form is no longer available</h1>
         <p className="mt-3 text-sm text-ink-muted">Reply to our last email and we will send you a new link.</p>
       </main>
@@ -24,7 +24,7 @@ export default async function IntakePage({ params }: { params: Promise<{ token: 
   const [deal] = await db.select({ title: deals.title }).from(deals).where(eq(deals.id, onboarding.dealId));
 
   return (
-    <main id="main-content" className="px-4 py-12 sm:py-16">
+    <main id="main-content" className="w-full px-4 py-12 sm:py-16">
       <div className="mx-auto max-w-2xl rounded-2xl border border-border bg-surface p-6 shadow-raised sm:p-8">
         <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-ink-faint">{deal?.title}</p>
         <h1 className="mt-2 font-display text-3xl font-bold text-ink">Let&apos;s get started</h1>

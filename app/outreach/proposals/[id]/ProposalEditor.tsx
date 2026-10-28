@@ -271,10 +271,13 @@ export function ProposalEditor({
         <p className="mb-3 text-sm text-ink-muted">You set every price. Whole US dollars.</p>
         <div className="flex flex-col gap-2">
           {lineItems.map((item, index) => (
-            <div key={index} className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_120px_130px_auto] sm:items-center">
+            <div
+              key={index}
+              className="grid grid-cols-2 gap-2 rounded-md border border-border p-2 sm:grid-cols-[1fr_120px_130px_auto] sm:items-center sm:border-0 sm:p-0"
+            >
               <input
                 aria-label={`Line item ${index + 1} description`}
-                className={inputClass}
+                className={`${inputClass} col-span-2 sm:col-span-1`}
                 disabled={!editable}
                 value={item.description}
                 placeholder="e.g. Website redesign (6 pages)"
@@ -316,7 +319,7 @@ export function ProposalEditor({
               {editable && (
                 <button
                   type="button"
-                  className="text-xs text-ink-muted underline"
+                  className="col-span-2 justify-self-start text-xs text-ink-muted underline sm:col-span-1"
                   onClick={() => (setLineItems(lineItems.filter((_, i) => i !== index)), touch())}
                 >
                   Remove

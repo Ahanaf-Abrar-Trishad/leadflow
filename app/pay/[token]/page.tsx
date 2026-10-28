@@ -26,7 +26,7 @@ export default async function PayPage({
 
   if (!invoice) {
     return (
-      <main id="main-content" className="mx-auto max-w-lg px-4 py-20 text-center">
+      <main id="main-content" className="mx-auto w-full max-w-lg px-4 py-20 text-center">
         <h1 className="font-display text-2xl font-bold text-ink">This link is no longer valid</h1>
         <p className="mt-3 text-sm text-ink-muted">Reply to our last email and we will send you a current invoice.</p>
       </main>
@@ -39,7 +39,7 @@ export default async function PayPage({
   const isMonthly = invoice.kind === "monthly";
 
   return (
-    <main id="main-content" className="px-4 py-12 sm:py-20">
+    <main id="main-content" className="w-full px-4 py-12 sm:py-20">
       <article className="mx-auto max-w-lg rounded-2xl border border-border bg-surface p-6 shadow-raised sm:p-8">
         <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-ink-faint">
           Invoice for {deal?.title ?? "you"}

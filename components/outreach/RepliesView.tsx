@@ -99,7 +99,10 @@ export function RepliesView({
 
   return (
     <div className="grid grid-cols-1 gap-4.5 lg:grid-cols-[344px_minmax(0,1fr)] lg:items-start">
-      <div className="flex flex-col gap-3">
+      {/* On a phone the list and the open thread can't sit side by side, and
+          a thread opened below a long list is easy to miss: show one at a
+          time there, with a way back to the list. */}
+      <div className={cn("flex flex-col gap-3", selectedThread && "hidden lg:flex")}>
         <div className="flex border border-border">
           {(
             [
@@ -177,8 +180,11 @@ export function RepliesView({
         ) : (
           <>
             <div className="flex flex-wrap items-start gap-3.5 border-b border-border px-4.5 py-3.5">
+              <Link href="/outreach/replies" className="w-full text-sm text-ink-muted hover:text-ink lg:hidden">
+                ← All replies
+              </Link>
               <div className="min-w-0 flex-1 basis-[220px]">
-                <div className="font-display text-xl font-semibold">{selectedThread.contactEmail}</div>
+                <div className="break-all font-display text-xl font-semibold">{selectedThread.contactEmail}</div>
                 <div className="mt-0.5 text-[12.5px] text-ink-muted">
                   {selectedThread.campaignName} · Step {selectedThread.currentStep} · {selectedThread.status}
                 </div>
@@ -220,9 +226,9 @@ export function RepliesView({
             <div className="flex max-h-[420px] flex-col gap-3 overflow-y-auto p-4.5">
               {threadMessages.map((m) => (
                 <div key={m.id} className={cn("flex flex-col", m.direction === "out" ? "items-end" : "items-start")}>
-                  <div className="max-w-[78%] border border-border bg-paper px-3.5 py-2.5">
-                    <div className="mb-1 flex items-baseline gap-2.5">
-                      <span className="text-[11px] font-bold uppercase tracking-[0.09em]">
+                  <div className="max-w-[92%] border border-border bg-paper px-3.5 py-2.5 sm:max-w-[78%]">
+                    <div className="mb-1 flex flex-wrap items-baseline gap-x-2.5">
+                      <span className="break-all text-[11px] font-bold uppercase tracking-[0.09em]">
                         {m.direction === "out" ? "You" : selectedThread.contactEmail}
                       </span>
                       <span className="text-[11px] text-ink-faint">{formatTime(m.at)}</span>

@@ -24,7 +24,7 @@ export default async function ProposalPreviewPage({ params }: { params: Promise<
     : proposal;
 
   return (
-    <main id="main-content" className="px-4 py-10">
+    <main id="main-content" className="w-full px-4 py-10">
       <p className="mx-auto mb-4 max-w-3xl text-sm text-ink-muted">
         Preview{proposal.signedSnapshot ? " of the signed version" : ""}. The client also sees an accept form below.
       </p>

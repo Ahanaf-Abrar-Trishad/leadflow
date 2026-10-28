@@ -1,6 +1,8 @@
 import { PageShell, PageHeader } from "@/components/outreach/PageShell";
 import { RepliesView } from "@/components/outreach/RepliesView";
 import { getReplyThreads, getReplyThread, getThreadMessages } from "@/lib/outreach/replies/queries";
+import { getPendingReplyDraft } from "@/lib/ai/replies";
+import { getDealForEnrollment } from "@/lib/deals/deals";
 
 export const metadata = { title: "Replies | LeadFlow" };
 export const dynamic = "force-dynamic";
@@ -10,9 +12,15 @@ export default async function RepliesPage({ searchParams }: { searchParams: Prom
 
   const threads = await getReplyThreads("all");
 
-  const [selectedThread, threadMessages] = selectedEnrollmentId
-    ? await Promise.all([getReplyThread(selectedEnrollmentId), getThreadMessages(selectedEnrollmentId)])
-    : [null, []];
+  const validId = selectedEnrollmentId && /^[0-9a-f-]{36}$/i.test(selectedEnrollmentId) ? selectedEnrollmentId : null;
+  const [selectedThread, threadMessages, replyDraft, deal] = validId
+    ? await Promise.all([
+        getReplyThread(validId),
+        getThreadMessages(validId),
+        getPendingReplyDraft(validId),
+        getDealForEnrollment(validId),
+      ])
+    : [null, [], null, null];
 
   return (
     <PageShell width="wide">
@@ -25,6 +33,8 @@ export default async function RepliesPage({ searchParams }: { searchParams: Prom
         selectedEnrollmentId={selectedEnrollmentId ?? null}
         selectedThread={selectedThread}
         threadMessages={threadMessages}
+        replyDraft={replyDraft}
+        deal={deal}
       />
     </PageShell>
   );

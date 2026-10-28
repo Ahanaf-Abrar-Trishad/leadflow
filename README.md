@@ -14,8 +14,8 @@ everything before it goes out.
 | 1. Foundation: outreach engine (mailboxes, 5-step sequences, follow-ups, reply and bounce detection, unsubscribe and suppression, multi-user) | ✅ Done (carried over from PPC-Tools) |
 | 2. Lead ingest: Google Maps scrapes, website email finder, Scout/CSV import, lead list, add leads to campaigns | ✅ Done |
 | 3. AI icebreakers through a Claude connector (MCP, your own Claude subscription) and an approval queue | ✅ Done |
-| 4. Reply classification and deal pipeline | ⏳ Next |
-| 5. Proposals with a public accept link | Planned |
+| 4. Reply triage and answer drafts by Claude, sales pipeline board | ✅ Done |
+| 5. Proposals with a public accept link | ⏳ Next |
 | 6. Payments (gateway to be decided) and onboarding | Planned |
 | 7. WhatsApp channel | Planned |
 
@@ -73,6 +73,21 @@ every lead without one at preflight.
 
 The connector URL carries the secret; anyone with it can read lead data and
 submit drafts (never send). Rotate it by changing `MCP_ACCESS_TOKEN`.
+
+## Replies and pipeline
+
+Through the same connector, Claude triages new replies before icebreakers:
+it labels each one (interested, question, not now, not interested, wants
+out, out of office, other) with a one-line reason, and for interested,
+question and not-now replies drafts an answer. The label shows in
+**Replies**; the draft pre-fills that thread's reply box, and only pressing
+Send delivers it. A "wants out" label never suppresses anyone by itself -
+use the Unsubscribe button.
+
+An interested reply (or **Add to pipeline** on any thread) creates a deal
+on the **Pipeline** board: Replied, Call booked, Proposal, Won, Lost. Each
+deal carries a value in USD, notes, a lost reason, and a link back to the
+conversation. One deal per contact.
 
 ## Run it locally
 

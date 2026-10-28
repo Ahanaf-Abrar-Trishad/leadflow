@@ -46,13 +46,19 @@ export async function listLeadsNeedingIcebreaker(limit: number) {
 export async function getQueueStatus() {
   const [[needing], [pending]] = await Promise.all([
     db.select({ value: count() }).from(leads).where(needsIcebreaker()),
-    db.select({ value: count() }).from(aiDrafts).where(eq(aiDrafts.status, "pending")),
+    db.select({ value: count() }).from(aiDrafts).where(pendingIcebreakers()),
   ]);
   return { leadsNeedingIcebreaker: needing.value, draftsAwaitingReview: pending.value };
 }
 
+/** Icebreakers waiting on the Approvals page. Reply drafts are reviewed in
+ * the Replies inbox instead, so they are not counted here. */
+function pendingIcebreakers() {
+  return and(eq(aiDrafts.status, "pending"), eq(aiDrafts.kind, "icebreaker"));
+}
+
 export async function countPendingDrafts(): Promise<number> {
-  const [row] = await db.select({ value: count() }).from(aiDrafts).where(eq(aiDrafts.status, "pending"));
+  const [row] = await db.select({ value: count() }).from(aiDrafts).where(pendingIcebreakers());
   return row.value;
 }
 
@@ -84,7 +90,10 @@ export async function saveIcebreakerDraft(leadId: string, content: string, obser
  */
 export async function approveDraft(draftId: string, editedContent?: string): Promise<void> {
   const [draft] = await db.select().from(aiDrafts).where(eq(aiDrafts.id, draftId));
-  if (!draft || draft.status !== "pending") throw new DraftError("This draft is no longer waiting for review.");
+  if (!draft || draft.status !== "pending" || draft.kind !== "icebreaker" || !draft.leadId) {
+    throw new DraftError("This draft is no longer waiting for review.");
+  }
+  const leadId = draft.leadId;
   const finalText = validateIcebreaker(editedContent ?? draft.content);
 
   await runAtomic(async (tx) => {
@@ -95,7 +104,7 @@ export async function approveDraft(draftId: string, editedContent?: string): Pro
     const [lead] = await tx
       .update(leads)
       .set({ icebreaker: finalText, updatedAt: new Date() })
-      .where(eq(leads.id, draft.leadId))
+      .where(eq(leads.id, leadId))
       .returning({ contactId: leads.contactId });
     if (lead?.contactId) {
       await tx
@@ -110,7 +119,7 @@ export async function rejectDraft(draftId: string): Promise<void> {
   const updated = await db
     .update(aiDrafts)
     .set({ status: "rejected", reviewedAt: new Date() })
-    .where(and(eq(aiDrafts.id, draftId), eq(aiDrafts.status, "pending")))
+    .where(and(eq(aiDrafts.id, draftId), pendingIcebreakers()))
     .returning({ id: aiDrafts.id });
   if (updated.length === 0) throw new DraftError("This draft is no longer waiting for review.");
 }
@@ -131,7 +140,7 @@ export async function listPendingDrafts(page: number) {
     })
     .from(aiDrafts)
     .innerJoin(leads, eq(leads.id, aiDrafts.leadId))
-    .where(eq(aiDrafts.status, "pending"))
+    .where(pendingIcebreakers())
     .orderBy(asc(aiDrafts.createdAt))
     .limit(PAGE_SIZE + 1)
     .offset(pageOffset(page));

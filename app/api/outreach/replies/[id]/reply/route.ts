@@ -9,6 +9,7 @@ import { createGmailTransport } from "@/lib/outreach/transport/gmail";
 import { buildThreadHeaders } from "@/lib/outreach/templates/threading";
 import { getThreadMessages } from "@/lib/outreach/replies/queries";
 import { getCurrentUser } from "@/lib/outreach/auth/currentUser";
+import { markReplyDraftSent } from "@/lib/ai/replies";
 
 /** `id` is the enrollment id a Replies thread is keyed by. Sends a free-text
  * reply from the enrollment's assigned mailbox, threaded into the same
@@ -21,6 +22,9 @@ export async function POST(request: Request, ctx: RouteContext<"/api/outreach/re
   const { id } = await ctx.params;
   const body = await request.json().catch(() => null);
   const text = typeof body?.text === "string" ? body.text.trim() : "";
+  /** Set when the operator started from Claude's draft, so it is recorded
+   * as sent (and whether they edited it) instead of left pending. */
+  const draftId = typeof body?.draftId === "string" ? body.draftId : undefined;
   if (!text) return NextResponse.json({ error: "Reply text is required" }, { status: 422 });
 
   const [enrollment] = await db.select().from(enrollments).where(eq(enrollments.id, id));
@@ -90,6 +94,7 @@ export async function POST(request: Request, ctx: RouteContext<"/api/outreach/re
   });
 
   await db.update(replies).set({ status: "handled", snoozedUntil: null }).where(eq(replies.enrollmentId, id));
+  if (draftId) await markReplyDraftSent(draftId, id, text);
 
   return NextResponse.json({ sent: true });
 }

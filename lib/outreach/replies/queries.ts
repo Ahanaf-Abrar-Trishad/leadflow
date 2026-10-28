@@ -1,6 +1,7 @@
 import { and, desc, eq, gte } from "drizzle-orm";
 import { db } from "@/db/client";
 import { campaigns, contacts, enrollments, messages, replies, sequenceSteps } from "@/db/schema";
+import { renderTemplate } from "@/lib/outreach/templates/render";
 import { threadNeedsAttention, type ReplyFilter, type ReplyThread, type ThreadMessage } from "./types";
 
 export type { ReplyFilter, ReplyThread, ThreadMessage };
@@ -14,6 +15,8 @@ async function allThreads(): Promise<ReplyThread[]> {
       subject: replies.subject,
       snippet: replies.snippet,
       unsubscribeRequested: replies.unsubscribeRequested,
+      classification: replies.classification,
+      classificationNote: replies.classificationNote,
       createdAt: replies.createdAt,
       contactEmail: contacts.email,
       campaignId: campaigns.id,
@@ -87,12 +90,13 @@ export async function getRecentReplies(since: Date, limit = 8): Promise<RecentRe
 }
 
 /** Merges outbound sends and inbound replies into one chronological thread.
- * Outbound content comes from the sequence step's *template* - the app
- * never persists the merge-field-rendered text it actually sent, only the
- * template plus a send record - so this shows the template, not a
- * byte-for-byte copy of what the contact received. */
+ * Outbound content comes from the sequence step's template - the app never
+ * persists the text it actually sent, only the template plus a send record -
+ * rendered here with the contact's current merge fields. That matches what
+ * the contact received unless a field changed after sending (an icebreaker
+ * approved later, say). */
 export async function getThreadMessages(enrollmentId: string): Promise<ThreadMessage[]> {
-  const [outboundRows, inboundRows] = await Promise.all([
+  const [outboundRows, inboundRows, [contact]] = await Promise.all([
     db
       .select({
         id: messages.id,
@@ -104,14 +108,20 @@ export async function getThreadMessages(enrollmentId: string): Promise<ThreadMes
       .leftJoin(sequenceSteps, eq(sequenceSteps.id, messages.stepId))
       .where(eq(messages.enrollmentId, enrollmentId)),
     db.select().from(replies).where(eq(replies.enrollmentId, enrollmentId)),
+    db
+      .select({ fields: contacts.fields })
+      .from(enrollments)
+      .innerJoin(contacts, eq(contacts.id, enrollments.contactId))
+      .where(eq(enrollments.id, enrollmentId)),
   ]);
+  const fields = contact?.fields ?? {};
 
   const outbound: ThreadMessage[] = outboundRows.map((m) => ({
     id: m.id,
     direction: "out",
     at: m.sentAt,
-    subject: m.subjectTemplate ?? "(sequence step)",
-    text: m.bodyTemplate ?? "",
+    subject: m.subjectTemplate ? renderTemplate(m.subjectTemplate, fields) : "(sequence step)",
+    text: m.bodyTemplate ? renderTemplate(m.bodyTemplate, fields) : "",
   }));
 
   const inbound: ThreadMessage[] = inboundRows.map((r) => ({

@@ -19,6 +19,9 @@ export interface ReplyThread {
   subject: string;
   snippet: string;
   unsubscribeRequested: boolean;
+  /** Claude's label for the latest reply, null until triaged. */
+  classification: string | null;
+  classificationNote: string | null;
   createdAt: Date;
 }
 

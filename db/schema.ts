@@ -173,6 +173,13 @@ export const replies = pgTable("replies", {
   status: text("status").notNull().default("unhandled"),
   snoozedUntil: timestamp("snoozed_until", { withTimezone: true }),
   unsubscribeRequested: boolean("unsubscribe_requested").notNull().default(false),
+  /** Claude's read of an inbound reply (lib/ai/replies.ts): "interested" |
+   * "question" | "not_now" | "not_interested" | "unsubscribe" |
+   * "out_of_office" | "other". A label for the operator only - nothing acts
+   * on it except creating a pipeline deal for "interested". */
+  classification: text("classification"),
+  classificationNote: text("classification_note"),
+  classifiedAt: timestamp("classified_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -296,19 +303,19 @@ export const leads = pgTable(
   ],
 );
 
-/** Text Claude drafted for a lead through the MCP server, waiting for an
- * operator. Nothing Claude writes reaches a prospect until it is approved
- * here (lib/ai/drafts.ts). One pending draft per lead and kind - a newer
- * draft replaces the pending one.
- * kind: "icebreaker"
+/** Text Claude drafted through the MCP server, waiting for an operator.
+ * Nothing Claude writes reaches a prospect until a person approves it: an
+ * icebreaker on the Approvals page (lib/ai/drafts.ts), a reply by sending it
+ * from the Replies inbox (lib/ai/replies.ts). One pending draft per subject
+ * and kind - a newer draft replaces the pending one.
+ * kind: "icebreaker" (has leadId) | "reply" (has enrollmentId)
  * status: "pending" | "approved" | "rejected" */
 export const aiDrafts = pgTable(
   "ai_drafts",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    leadId: uuid("lead_id")
-      .notNull()
-      .references(() => leads.id, { onDelete: "cascade" }),
+    leadId: uuid("lead_id").references(() => leads.id, { onDelete: "cascade" }),
+    enrollmentId: uuid("enrollment_id").references(() => enrollments.id, { onDelete: "cascade" }),
     kind: text("kind").notNull().default("icebreaker"),
     content: text("content").notNull(),
     /** What Claude based the draft on, shown to the reviewer. */
@@ -323,6 +330,36 @@ export const aiDrafts = pgTable(
     uniqueIndex("ai_drafts_one_pending_idx")
       .on(table.leadId, table.kind)
       .where(sql`${table.status} = 'pending'`),
+    uniqueIndex("ai_drafts_one_pending_reply_idx")
+      .on(table.enrollmentId, table.kind)
+      .where(sql`${table.status} = 'pending'`),
     index("ai_drafts_status_idx").on(table.status, table.createdAt),
   ],
+);
+
+/** A conversation that could become a client - one per contact. Created when
+ * Claude marks a reply "interested" or when an operator adds a thread to the
+ * pipeline; proposals and payments (later stages) hang off it.
+ * stage: "replied" | "call_booked" | "proposal" | "won" | "lost" */
+export const deals = pgTable(
+  "deals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    contactId: uuid("contact_id")
+      .notNull()
+      .references(() => contacts.id, { onDelete: "cascade" }),
+    leadId: uuid("lead_id").references(() => leads.id, { onDelete: "set null" }),
+    /** The thread the deal came from, for linking back to the conversation. */
+    enrollmentId: uuid("enrollment_id").references(() => enrollments.id, { onDelete: "set null" }),
+    title: text("title").notNull(),
+    stage: text("stage").notNull().default("replied"),
+    /** Expected deal size in whole US dollars. */
+    valueUsd: integer("value_usd"),
+    notes: text("notes").notNull().default(""),
+    lostReason: text("lost_reason"),
+    stageChangedAt: timestamp("stage_changed_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex("deals_contact_idx").on(table.contactId), index("deals_stage_idx").on(table.stage)],
 );

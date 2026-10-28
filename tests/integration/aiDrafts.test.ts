@@ -126,7 +126,9 @@ describe("AI drafts (integration)", () => {
         "get_lead_research",
         "get_queue_status",
         "list_leads_needing_icebreaker",
+        "list_replies_to_triage",
         "save_icebreaker_draft",
+        "triage_reply",
       ]);
 
       const listed = await client.callTool({ name: "list_leads_needing_icebreaker", arguments: { limit: 5 } });
@@ -143,7 +145,7 @@ describe("AI drafts (integration)", () => {
       expect(saved.isError).toBeFalsy();
 
       const status = await client.callTool({ name: "get_queue_status", arguments: {} });
-      expect(JSON.parse((status.content as { text: string }[])[0].text)).toEqual({ leadsNeedingIcebreaker: 0, draftsAwaitingReview: 1 });
+      expect(JSON.parse((status.content as { text: string }[])[0].text)).toEqual({ repliesToTriage: 0, leadsNeedingIcebreaker: 0, draftsAwaitingReview: 1 });
 
       const [draft] = await db.select().from(aiDrafts);
       expect(draft).toMatchObject({ leadId: bright.id, status: "pending", content: LINE });

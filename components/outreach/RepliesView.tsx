@@ -1,14 +1,42 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Button } from "@/components/shared/Button";
 import { cn } from "@/lib/cn";
 import { useUIStore } from "@/store/uiStore";
 import { threadNeedsAttention, type ReplyThread, type ThreadMessage } from "@/lib/outreach/replies/types";
+import { CATEGORY_LABELS, STAGE_LABELS, isDealStage, type ReplyCategory } from "@/lib/deals/stages";
 
-type FilterKey = "unhandled" | "all";
+type FilterKey = "unhandled" | "interested" | "all";
+
+export interface ReplyDraft {
+  id: string;
+  content: string;
+  observations: string;
+}
+
+const CATEGORY_CLASSES: Record<string, string> = {
+  interested: "bg-signal text-white",
+  question: "bg-signal-soft text-signal-strong",
+  not_now: "bg-flag-soft text-flag",
+  unsubscribe: "bg-danger-soft text-danger",
+};
+
+function CategoryBadge({ category }: { category: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-block px-1.5 py-px text-[10px] uppercase tracking-[0.09em]",
+        CATEGORY_CLASSES[category] ?? "bg-paper text-ink-muted",
+      )}
+    >
+      {CATEGORY_LABELS[category as ReplyCategory] ?? category}
+    </span>
+  );
+}
 
 function formatTime(value: Date): string {
   return new Date(value).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
@@ -19,21 +47,30 @@ export function RepliesView({
   selectedEnrollmentId,
   selectedThread,
   threadMessages,
+  replyDraft,
+  deal,
 }: {
   threads: ReplyThread[];
   selectedEnrollmentId: string | null;
   selectedThread: ReplyThread | null;
   threadMessages: ThreadMessage[];
+  replyDraft: ReplyDraft | null;
+  deal: { id: string; stage: string } | null;
 }) {
   const [filter, setFilter] = useState<FilterKey>("unhandled");
-  const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const router = useRouter();
   const showToast = useUIStore((state) => state.showToast);
 
   const unhandledCount = useMemo(() => threads.filter((t) => threadNeedsAttention(t)).length, [threads]);
+  const interestedCount = useMemo(() => threads.filter((t) => t.classification === "interested").length, [threads]);
   const visible = useMemo(
-    () => (filter === "unhandled" ? threads.filter((t) => threadNeedsAttention(t)) : threads),
+    () =>
+      filter === "unhandled"
+        ? threads.filter((t) => threadNeedsAttention(t))
+        : filter === "interested"
+          ? threads.filter((t) => t.classification === "interested")
+          : threads,
     [threads, filter],
   );
 
@@ -41,7 +78,10 @@ export function RepliesView({
     router.push(`/outreach/replies?thread=${enrollmentId}`);
   };
 
-  const runAction = async (action: "handle" | "snooze" | "unsubscribe", successMessage: string) => {
+  const runAction = async (
+    action: "handle" | "snooze" | "unsubscribe" | "pipeline" | "discard-draft",
+    successMessage: string,
+  ) => {
     if (!selectedEnrollmentId) return;
     setBusy(true);
     try {
@@ -57,28 +97,6 @@ export function RepliesView({
     }
   };
 
-  const sendReply = async () => {
-    if (!selectedEnrollmentId || !draft.trim()) return;
-    setBusy(true);
-    try {
-      const response = await fetch(`/api/outreach/replies/${selectedEnrollmentId}/reply`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: draft.trim() }),
-      });
-      if (!response.ok) {
-        const body = await response.json().catch(() => null);
-        showToast("error", body?.error ?? "Could not send the reply.");
-        return;
-      }
-      setDraft("");
-      showToast("success", "Reply sent.");
-      router.refresh();
-    } finally {
-      setBusy(false);
-    }
-  };
-
   return (
     <div className="grid grid-cols-1 gap-4.5 lg:grid-cols-[344px_minmax(0,1fr)] lg:items-start">
       <div className="flex flex-col gap-3">
@@ -86,6 +104,7 @@ export function RepliesView({
           {(
             [
               { key: "unhandled" as const, label: "Unhandled", count: unhandledCount },
+              { key: "interested" as const, label: "Interested", count: interestedCount },
               { key: "all" as const, label: "All", count: threads.length },
             ]
           ).map((tab) => (
@@ -131,10 +150,13 @@ export function RepliesView({
                   </div>
                   <div className="mt-0.5 truncate text-[11.5px] text-ink-muted">{thread.campaignName}</div>
                   <div className="mt-1.5 line-clamp-2 text-[12.5px] text-ink-muted">{thread.snippet}</div>
-                  {thread.unsubscribeRequested && (
-                    <span className="mt-1.5 inline-block bg-danger-soft px-1.5 py-px text-[10px] uppercase tracking-[0.09em] text-danger">
-                      Unsubscribe
-                    </span>
+                  {(thread.classification || thread.unsubscribeRequested) && (
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      {thread.classification && <CategoryBadge category={thread.classification} />}
+                      {thread.unsubscribeRequested && thread.classification !== "unsubscribe" && (
+                        <CategoryBadge category="unsubscribe" />
+                      )}
+                    </div>
                   )}
                 </button>
               );
@@ -160,8 +182,18 @@ export function RepliesView({
                 <div className="mt-0.5 text-[12.5px] text-ink-muted">
                   {selectedThread.campaignName} · Step {selectedThread.currentStep} · {selectedThread.status}
                 </div>
+                {deal && (
+                  <Link href="/outreach/pipeline" className="mt-1 inline-block text-[12.5px] text-signal-strong hover:underline">
+                    In pipeline: {isDealStage(deal.stage) ? STAGE_LABELS[deal.stage] : deal.stage}
+                  </Link>
+                )}
               </div>
               <div className="flex flex-none flex-wrap gap-1.5">
+                {!deal && (
+                  <Button variant="secondary" disabled={busy} onClick={() => runAction("pipeline", "Added to the pipeline.")}>
+                    Add to pipeline
+                  </Button>
+                )}
                 <Button variant="secondary" disabled={busy} onClick={() => runAction("snooze", "Snoozed for 3 days.")}>
                   Snooze 3d
                 </Button>
@@ -173,6 +205,17 @@ export function RepliesView({
                 </Button>
               </div>
             </div>
+
+            {selectedThread.classification && (
+              <div className="flex flex-wrap items-center gap-2 border-b border-border bg-paper px-4.5 py-2.5 text-[12.5px] text-ink-muted">
+                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-faint">Claude</span>
+                <CategoryBadge category={selectedThread.classification} />
+                {selectedThread.classificationNote && <span>{selectedThread.classificationNote}</span>}
+                {selectedThread.classification === "unsubscribe" && (
+                  <span className="text-danger">If they asked to stop, use Unsubscribe.</span>
+                )}
+              </div>
+            )}
 
             <div className="flex max-h-[420px] flex-col gap-3 overflow-y-auto p-4.5">
               {threadMessages.map((m) => (
@@ -190,25 +233,91 @@ export function RepliesView({
               ))}
             </div>
 
-            <div className="border-t border-border p-4.5">
-              <textarea
-                rows={4}
-                className="w-full resize-y border border-border-strong bg-surface px-3 py-2 text-[13.5px] text-ink outline-none placeholder:text-ink-faint focus-visible:border-signal"
-                placeholder="Reply as the sending mailbox. This lands in the same thread the sequence created."
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-              />
-              <div className="mt-2 flex items-center justify-between gap-3">
-                <span className="text-[11.5px] text-ink-faint">
-                  Sending stops for this contact either way. Replying marks the thread handled.
-                </span>
-                <Button disabled={busy || !draft.trim()} onClick={sendReply}>
-                  Send reply
-                </Button>
-              </div>
-            </div>
+            <ReplyComposer
+              key={`${selectedThread.enrollmentId}:${replyDraft?.id ?? "none"}`}
+              enrollmentId={selectedThread.enrollmentId}
+              replyDraft={replyDraft}
+              busy={busy}
+              onDiscardDraft={() => runAction("discard-draft", "Draft discarded.")}
+            />
           </>
         )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The reply box for one thread. Keyed by thread (and draft) in the parent,
+ * so text typed for one contact can never carry over to another thread.
+ * When Claude drafted an answer it starts pre-filled with it; sending is
+ * still entirely the operator's action.
+ */
+function ReplyComposer({
+  enrollmentId,
+  replyDraft,
+  busy: parentBusy,
+  onDiscardDraft,
+}: {
+  enrollmentId: string;
+  replyDraft: ReplyDraft | null;
+  busy: boolean;
+  onDiscardDraft: () => void;
+}) {
+  const [draft, setDraft] = useState(replyDraft?.content ?? "");
+  const [sending, setSending] = useState(false);
+  const router = useRouter();
+  const showToast = useUIStore((state) => state.showToast);
+  const busy = parentBusy || sending;
+
+  const sendReply = async () => {
+    if (!draft.trim()) return;
+    setSending(true);
+    try {
+      const response = await fetch(`/api/outreach/replies/${enrollmentId}/reply`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: draft.trim(), ...(replyDraft ? { draftId: replyDraft.id } : {}) }),
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        showToast("error", body?.error ?? "Could not send the reply.");
+        return;
+      }
+      setDraft("");
+      showToast("success", "Reply sent.");
+      router.refresh();
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="border-t border-border p-4.5">
+      {replyDraft && (
+        <div className="mb-2 flex flex-wrap items-center gap-2 text-[12px] text-ink-muted">
+          <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-signal-strong">Drafted by Claude</span>
+          <span>Read it and edit as needed. Nothing is sent until you press Send.</span>
+          <button type="button" disabled={busy} onClick={onDiscardDraft} className="text-ink-faint underline disabled:opacity-50">
+            Discard draft
+          </button>
+        </div>
+      )}
+      <textarea
+        rows={replyDraft ? 7 : 4}
+        aria-label="Reply"
+        className="w-full resize-y border border-border-strong bg-surface px-3 py-2 text-[13.5px] text-ink outline-none placeholder:text-ink-faint focus-visible:border-signal"
+        placeholder="Reply as the sending mailbox. This lands in the same thread the sequence created."
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+      />
+      <div className="mt-2 flex items-center justify-between gap-3">
+        <span className="text-[11.5px] text-ink-faint">
+          Sending stops for this contact either way. Replying marks the thread handled.
+        </span>
+        <Button disabled={busy || !draft.trim()} onClick={sendReply}>
+          Send reply
+        </Button>
       </div>
     </div>
   );

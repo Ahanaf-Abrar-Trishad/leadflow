@@ -10,7 +10,7 @@ import { BlueprintCard } from "@/components/outreach/BlueprintCard";
 import { CampaignStartButton } from "./CampaignStartButton";
 import { CampaignPauseResumeButton } from "./CampaignPauseResumeButton";
 import { ImportContactsForm } from "./ImportContactsForm";
-import { StatusPoller } from "./StatusPoller";
+import { StatusPoller } from "@/components/outreach/StatusPoller";
 import { runPoolPreflight, summarizePoolDomains } from "@/lib/outreach/preflight/pool";
 import { CONSOLE_TIMEZONE } from "@/lib/outreach/console/timezone";
 

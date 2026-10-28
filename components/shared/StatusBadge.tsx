@@ -22,6 +22,11 @@ const TONE_BY_STATUS: Record<string, StatusTone> = {
 
   draft: "neutral",
   pending: "neutral",
+  new: "neutral",
+  in_campaign: "live",
+  running: "live",
+  done: "live",
+  disqualified: "attention",
 
   paused: "attention",
   warming: "attention",

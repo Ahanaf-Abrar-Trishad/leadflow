@@ -88,3 +88,14 @@ export async function assertPublicImapHost(
 ): Promise<void> {
   return assertPublicHost(host, port, ALLOWED_IMAP_PORTS, lookup);
 }
+
+/** Plain web ports, for fetching a lead's public website. */
+const ALLOWED_WEB_PORTS = new Set([80, 443]);
+
+export async function assertPublicWebHost(
+  host: string,
+  port: number,
+  lookup: AddressLookup = defaultLookup,
+): Promise<void> {
+  return assertPublicHost(host, port, ALLOWED_WEB_PORTS, lookup);
+}

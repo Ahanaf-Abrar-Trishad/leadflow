@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 
 const POLL_INTERVAL_MS = 5000;
 
-/** Refreshes the (server-rendered) campaign page while it's active, so
- * enrollment status counts update without a manual reload. */
+/** Refreshes a server-rendered page while something on it is in progress
+ * (an active campaign, a running scrape), so counts update without a
+ * manual reload. */
 export function StatusPoller({ active }: { active: boolean }) {
   const router = useRouter();
 

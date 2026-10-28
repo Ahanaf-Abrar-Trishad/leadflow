@@ -17,7 +17,8 @@
     "db:migrate": "tsx db/migrate.ts",
     "worker": "tsx worker/tick.ts",
     "poller": "tsx worker/poller.ts",
-    "test:integration": "jest --config jest.integration.config.ts"
+    "test:integration": "jest --config jest.integration.config.ts",
+    "scrapes": "tsx worker/scrapes.ts"
   },
   "dependencies": {
     "dotenv": "^17.4.2",

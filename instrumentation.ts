@@ -1,6 +1,7 @@
 /**
- * Starts the outreach worker and poller inside the same process as the web
- * server. Both were previously only ever started as separate OS processes
+ * Starts the outreach worker, the reply poller and the scrape poller inside
+ * the same process as the web server. The first two were previously only
+ * ever started as separate OS processes
  * (`npm run worker` / `npm run poller`) - fine for a VPS you SSH into, but
  * most single-process hosts (Hostinger's Node.js app hosting included) only
  * run one long-lived command, so nothing ever claimed a due enrollment or
@@ -31,9 +32,11 @@ export async function register() {
 
   const { startTickLoop } = await import("@/worker/tick");
   const { startPollLoop } = await import("@/worker/poller");
+  const { startScrapeLoop } = await import("@/worker/scrapes");
 
   startTickLoop();
   startPollLoop();
+  startScrapeLoop();
 }
 
 /**

@@ -1,6 +1,10 @@
 export interface ContactRowInput {
   email: string;
   fields: Record<string, string>;
+  /** IANA zone the campaign's business hours are applied in; UTC if unset. */
+  timezone?: string;
+  /** Where the contact came from, e.g. "lead:gmaps". */
+  source?: string;
 }
 
 export interface ContactValidationResult {

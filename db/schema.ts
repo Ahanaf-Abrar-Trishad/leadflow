@@ -7,6 +7,8 @@ import {
   timestamp,
   jsonb,
   uniqueIndex,
+  index,
+  doublePrecision,
 } from "drizzle-orm/pg-core";
 
 /** provider: "smtp" | "gmail_oauth" (only "smtp" is used until Phase 3) */
@@ -227,3 +229,65 @@ export const workerHeartbeats = pgTable("worker_heartbeats", {
   lastRunAt: timestamp("last_run_at", { withTimezone: true }).notNull(),
   lastResult: jsonb("last_result").notNull().default({}).$type<Record<string, unknown>>(),
 });
+
+/** One Google Maps scrape submitted to the gmaps-scraper engine.
+ * status: "running" | "done" | "failed". `externalJobId` is the engine's own
+ * job id; worker/scrapes.ts polls it and imports the results into `leads`. */
+export const scrapeJobs = pgTable("scrape_jobs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  source: text("source").notNull().default("gmaps"),
+  keyword: text("keyword").notNull(),
+  location: text("location").notNull(),
+  depth: integer("depth").notNull(),
+  collectEmails: boolean("collect_emails").notNull().default(true),
+  maxTimeSeconds: integer("max_time_seconds").notNull(),
+  externalJobId: text("external_job_id"),
+  status: text("status").notNull().default("running"),
+  error: text("error"),
+  leadsFound: integer("leads_found").notNull().default(0),
+  leadsAdded: integer("leads_added").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  finishedAt: timestamp("finished_at", { withTimezone: true }),
+});
+
+/** A prospect before it becomes an outreach contact. Leads arrive from a
+ * Google Maps scrape, a Scout export or a generic CSV, and the same business
+ * arriving twice merges into one row through `dedupeKey` (see
+ * lib/leads/normalize.ts). A lead needs an email before it can be added to a
+ * campaign, at which point `contactId` links it to the `contacts` row.
+ * source: "gmaps" | "scout" | "csv"
+ * status: "new" | "in_campaign" | "disqualified" */
+export const leads = pgTable(
+  "leads",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    dedupeKey: text("dedupe_key").notNull(),
+    source: text("source").notNull(),
+    scrapeJobId: uuid("scrape_job_id").references(() => scrapeJobs.id, { onDelete: "set null" }),
+    name: text("name").notNull(),
+    contactName: text("contact_name"),
+    category: text("category"),
+    email: text("email"),
+    emailSource: text("email_source"),
+    phone: text("phone"),
+    website: text("website"),
+    address: text("address"),
+    timezone: text("timezone"),
+    rating: doublePrecision("rating"),
+    reviewCount: integer("review_count"),
+    platform: text("platform"),
+    profileUrl: text("profile_url"),
+    followers: integer("followers"),
+    socials: jsonb("socials").notNull().default({}).$type<Record<string, string>>(),
+    score: integer("score").notNull().default(0),
+    status: text("status").notNull().default("new"),
+    contactId: uuid("contact_id").references(() => contacts.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("leads_dedupe_key_idx").on(table.dedupeKey),
+    index("leads_scrape_job_idx").on(table.scrapeJobId),
+    index("leads_created_at_idx").on(table.createdAt),
+  ],
+);

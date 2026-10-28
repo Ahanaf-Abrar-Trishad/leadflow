@@ -16,6 +16,7 @@ interface Section {
 function buildSections(counts: { campaigns?: number; mailboxes?: number; unreadReplies?: number }): Section[] {
   return [
     { href: "/outreach/dashboard", label: "Dashboard" },
+    { href: "/outreach/leads", label: "Leads" },
     { href: "/outreach/replies", label: "Replies", badge: counts.unreadReplies ? counts.unreadReplies : undefined },
     { href: "/outreach", label: "Campaigns", badge: counts.campaigns },
     { href: "/outreach/mailboxes", label: "Mailboxes", badge: counts.mailboxes },
@@ -52,10 +53,10 @@ export function RailNav({ user, heartbeats, counts = {} }: RailNavProps) {
           <span className="relative h-3.5 w-3.5 flex-none border-[1.5px] border-signal">
             <span className="absolute inset-[3px] bg-signal" />
           </span>
-          <span className="font-display text-[17px] font-semibold tracking-wide text-ink">SEQUENCER</span>
+          <span className="font-display text-[17px] font-semibold tracking-wide text-ink">LEADFLOW</span>
         </div>
         <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.16em] text-ink-faint">
-          Cold outreach console
+          Lead pipeline console
         </div>
       </div>
 

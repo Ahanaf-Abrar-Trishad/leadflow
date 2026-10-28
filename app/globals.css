@@ -1,0 +1,454 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --font-mono:
+    var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Neutrals */
+  --color-ink: #14181f;
+  --color-ink-muted: #4b5567;
+  --color-ink-faint: #65707d;
+  --color-paper: #f7f8fa;
+  --color-surface: #ffffff;
+  --color-border: #dde1e7;
+  --color-border-strong: #b9c0cb;
+
+  /* Primary accent - "signal" teal */
+  --color-signal: #0e6e5c;
+  --color-signal-strong: #0a5346;
+  --color-signal-soft: #e4f3ef;
+
+  /* Semantic states */
+  --color-flag: #b54708;
+  --color-flag-soft: #fdf0e4;
+  --color-danger: #c0293a;
+  --color-danger-soft: #fbe7e9;
+  --color-success: #0e6e5c;
+  --color-success-soft: #e4f3ef;
+
+  /* Match-type functional color coding */
+  --color-mt-broad: #4b5567;
+  --color-mt-broad-soft: #eceef1;
+  --color-mt-phrase: #0e6e5c;
+  --color-mt-phrase-soft: #e4f3ef;
+  --color-mt-exact: #7a3fc2;
+  --color-mt-exact-soft: #f1e9fb;
+  --color-mt-bmm: #8a6600;
+  --color-mt-bmm-soft: #faf3df;
+
+  /*
+   * Radius scale is concentric-aware: a container's radius should equal its
+   * inner element's radius plus the padding between them. The pairs this
+   * codebase uses are `rounded-2xl` + `p-4` + `rounded-md` (24 = 8 + 16) and
+   * `rounded-xl` + `p-2` + `rounded-md` (16 = 8 + 8).
+   */
+  --radius-md: 0.5rem; /* 8px  - controls, inner panels */
+  --radius-lg: 0.75rem; /* 12px - compact cards */
+  --radius-xl: 1rem; /* 16px - medium containers */
+  --radius-2xl: 1.5rem; /* 24px - outer cards wrapping p-4 content */
+
+  /*
+   * The built-in CSS easings are too weak to read as intentional. These are
+   * the stronger variants: `ease-out` for anything entering or responding to
+   * input, `ease-in-out` for movement across the screen, `ease-swap` for
+   * cross-fading two states of the same element.
+   */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-swap: cubic-bezier(0.2, 0, 0, 1);
+
+  /*
+   * A real spring, sampled into `linear()` rather than faked with a cubic
+   * bezier - a bezier cannot overshoot, so "springy" bezier curves just ease
+   * harder instead of settling. ~6% overshoot: enough for a control to feel
+   * like it has mass, small enough that it never reads as a glitch. Reserved
+   * for elements that appear (palette, dialog), not for hover tweaks, where
+   * an overshoot re-triggering on every pointer pass would be noise.
+   *
+   * Browsers without `linear()` drop the whole declaration and fall back to
+   * the transition's default `ease`, which is a degradation, not a break.
+   */
+  --ease-spring: linear(
+    0, 0.006, 0.025, 0.101 6%, 0.539 18.2%, 0.777 25.1%, 0.876, 0.949, 1.001,
+    1.036, 1.056 42.9%, 1.062, 1.063, 1.06, 1.054 51.4%, 1.033 57.5%,
+    1.009 65%, 0.997 72.7%, 0.995 85.4%, 1
+  );
+
+  /*
+   * Layered, ink-tinted shadows rather than a single flat drop or a hard
+   * border - light falls off gradually, so stacking low-opacity layers reads
+   * as depth where one 0.1-alpha blur reads as a smudge.
+   */
+  --shadow-raised:
+    0 1px 1px -0.5px rgb(20 24 31 / 0.05), 0 2px 4px -1px rgb(20 24 31 / 0.05);
+  --shadow-lifted:
+    0 1px 1px -0.5px rgb(20 24 31 / 0.04), 0 4px 8px -3px rgb(20 24 31 / 0.06),
+    0 10px 20px -8px rgb(20 24 31 / 0.07);
+  --shadow-float:
+    0 1px 1px -0.5px rgb(20 24 31 / 0.05), 0 6px 12px -3px rgb(20 24 31 / 0.08),
+    0 16px 32px -12px rgb(20 24 31 / 0.12);
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    /*
+     * The header is sticky, so an anchored jump would otherwise land its
+     * target underneath the bar. Clears the header plus a little breathing
+     * room above the heading it scrolled to.
+     */
+    scroll-padding-top: 5rem;
+  }
+
+  body {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+  }
+
+  /* Headings get balanced line lengths; body copy avoids single-word orphans. */
+  h1,
+  h2,
+  h3,
+  h4 {
+    text-wrap: balance;
+  }
+
+  p,
+  li {
+    text-wrap: pretty;
+  }
+
+  /*
+   * Every number in this product is a count that updates while the user
+   * types. Proportional digits make those counts jitter on each keystroke.
+   */
+  output,
+  [data-numeric] {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.42s var(--ease-out) both;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s var(--ease-out) both;
+}
+
+/*
+ * Staggered entrance for a group of siblings. The parent sets the class, each
+ * child sets `--index`. Keep the step short - long cascades read as the page
+ * being slow rather than as choreography.
+ */
+.animate-stagger > * {
+  animation: fade-up 0.42s var(--ease-out) both;
+  animation-delay: calc(var(--index, 0) * 60ms);
+}
+
+/*
+ * Cross-fade between two icons occupying the same cell. Both stay mounted so
+ * the outgoing icon animates out instead of being yanked from the DOM, which
+ * is what makes a state change read as a transformation rather than a swap.
+ */
+.icon-swap {
+  display: inline-grid;
+  place-items: center;
+}
+
+.icon-swap > * {
+  grid-area: 1 / 1;
+  transition:
+    opacity 300ms var(--ease-swap),
+    transform 300ms var(--ease-swap),
+    filter 300ms var(--ease-swap);
+}
+
+.icon-swap > [data-visible="false"] {
+  opacity: 0;
+  transform: scale(0.25);
+  filter: blur(4px);
+  pointer-events: none;
+}
+
+.icon-swap > [data-visible="true"] {
+  opacity: 1;
+  transform: scale(1);
+  filter: blur(0);
+}
+
+/*
+ * Toasts enter from the same edge they sit on, so the motion matches where
+ * they came from. A transition (not a keyframe) so rapid-fire toasts retarget
+ * mid-flight instead of restarting from zero.
+ */
+.toast-enter {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  transition:
+    opacity 260ms var(--ease-out),
+    transform 260ms var(--ease-out);
+}
+
+@starting-style {
+  .toast-enter {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+}
+
+/*
+ * A hairline on every raster/vector asset so images sit on the page with the
+ * same edge definition as bordered surfaces. Pure black at low alpha - a
+ * tinted neutral would pick up the surface behind it and read as dirt.
+ */
+.img-edge {
+  outline: 1px solid rgb(0 0 0 / 0.1);
+  outline-offset: -1px;
+}
+
+/*
+ * Film grain over the page ground. Sits at z-index -1, so it paints on top of
+ * the body's flat `paper` fill but underneath every opaque surface - cards,
+ * header and footer stay clean, and only the empty space between them picks
+ * up texture. That's the point: large flat expanses are what read as sterile,
+ * not the panels sitting on them.
+ *
+ * Fixed rather than absolute so the grain doesn't travel with the scroll -
+ * a moving noise field is a texture, a stationary one is a paper stock.
+ */
+.page-grain {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.07;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+}
+
+/*
+ * Ambient light source behind a section's leading corner. A single large,
+ * heavily-feathered radial in the accent hue - the alternative to leaving a
+ * hero as type on a flat fill is not a dark band (that reads as a copy-paste
+ * seam) but a tint of the palette already in use.
+ *
+ * The host only needs `position: relative`; leaving its `z-index` at `auto`
+ * keeps it out of the stacking context so the negative-z child slides behind
+ * its own text without escaping the page ground.
+ */
+.ambient-wash {
+  position: relative;
+}
+
+.ambient-wash::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: -20rem;
+  right: -16rem;
+  width: 48rem;
+  height: 48rem;
+  border-radius: 9999px;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at center,
+    rgb(14 110 92 / 0.12) 0%,
+    rgb(14 110 92 / 0.05) 42%,
+    rgb(14 110 92 / 0) 70%
+  );
+}
+
+/*
+ * Expands a small control's hit area to the 40x40 minimum without changing
+ * its visual size. Requires a positioned ancestor chain that does not clip.
+ */
+.hit-area {
+  position: relative;
+}
+
+.hit-area::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 40px;
+  height: 40px;
+  transform: translate(-50%, -50%);
+}
+
+/*
+ * Modal surfaces built on the native <dialog> element, which supplies the
+ * focus trap, Esc handling and top-layer stacking that a div-based modal has
+ * to reimplement (and usually gets wrong). All that's left is the motion.
+ *
+ * `display` and `overlay` need `allow-discrete` for the exit half: both are
+ * discrete properties, so without it the dialog is yanked from the top layer
+ * on close and the transition plays on an invisible element.
+ */
+.modal-surface {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  transition:
+    opacity 240ms var(--ease-out),
+    transform 240ms var(--ease-spring),
+    display 240ms allow-discrete,
+    overlay 240ms allow-discrete;
+}
+
+.modal-surface:not([open]) {
+  opacity: 0;
+  transform: translateY(8px) scale(0.97);
+}
+
+@starting-style {
+  .modal-surface[open] {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+}
+
+.modal-surface::backdrop {
+  opacity: 1;
+  background-color: rgb(20 24 31 / 0.32);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+  transition:
+    opacity 240ms var(--ease-out),
+    display 240ms allow-discrete,
+    overlay 240ms allow-discrete;
+}
+
+.modal-surface:not([open])::backdrop {
+  opacity: 0;
+}
+
+@starting-style {
+  .modal-surface[open]::backdrop {
+    opacity: 0;
+  }
+}
+
+/*
+ * A frosted pane. The opaque `background-color` is the base declaration so a
+ * browser without `backdrop-filter` gets a solid panel rather than text over
+ * live content; the @supports block then trades that for real translucency.
+ *
+ * The two inset hairlines are what separate this from "blurred rectangle":
+ * a bright line along the top edge where light enters the pane and a dark one
+ * along the bottom where it exits. That pair is the whole illusion of a
+ * physical sheet of glass with thickness - without them a blur reads as a
+ * filter applied to the page, not as an object sitting above it.
+ *
+ * Borders are left to the consumer. Plain classes sit outside Tailwind's
+ * utility layer and therefore outrank it, so a `border` declared here could
+ * not be overridden by `border-b-0` on the element - a header that wants only
+ * a bottom edge would be stuck with four.
+ */
+.glass {
+  background-color: var(--color-surface);
+}
+
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .glass {
+    background-color: rgb(255 255 255 / 0.72);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(20px) saturate(180%);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.9),
+      inset 0 -1px 0 rgb(20 24 31 / 0.04);
+  }
+}
+
+/*
+ * A border that illuminates under the cursor. `--spotlight-x`/`--spotlight-y`
+ * are written by a pointermove handler; with no handler attached the fallback
+ * parks the light off-canvas above the element, so the border simply stays
+ * unlit rather than glowing from a corner.
+ *
+ * Drawn as a masked pseudo-element rather than a `border-image`: the
+ * padding-box/border-box mask XOR punches the card's interior out of the
+ * gradient, leaving colour only in the 1px ring. `border-radius: inherit`
+ * keeps it aligned to whatever radius the host card uses.
+ */
+.spotlight {
+  position: relative;
+}
+
+.spotlight::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  padding: 1px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 260ms var(--ease-out);
+  background: radial-gradient(
+    16rem circle at var(--spotlight-x, 50%) var(--spotlight-y, -50%),
+    var(--color-signal),
+    transparent 65%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+
+.spotlight:hover::before,
+.spotlight:focus-within::before {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /*
+   * Reduced motion means less movement, not no feedback. Opacity-only
+   * transitions still carry meaning (this element changed state) without the
+   * vestibular cost, so they keep a perceptible duration.
+   */
+  .animate-fade-in,
+  .icon-swap > * {
+    animation-duration: 150ms !important;
+    transition-duration: 150ms !important;
+  }
+
+  .icon-swap > [data-visible="false"] {
+    transform: none;
+    filter: none;
+  }
+}

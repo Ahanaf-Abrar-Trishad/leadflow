@@ -1,0 +1,147 @@
+/*
+ * Scoped re-skin for the outreach console — the "Industry" blueprint design
+ * (Barlow Condensed headings, square corners, hairline dividers, corner
+ * tick-marked cards). Every existing outreach component is built purely from
+ * the suite-wide Tailwind tokens in app/globals.css (bg-signal, rounded-2xl,
+ * shadow-raised...), so redefining those tokens' *values* under a single
+ * `.outreach-theme` wrapper re-skins the whole section for free, without
+ * touching each component's className. It stays scoped to that class so
+ * the logged-out pages (login, setup, unsubscribe) keep the default look.
+ */
+
+.outreach-theme {
+  --font-display: var(--font-barlow-condensed), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-barlow), ui-sans-serif, system-ui, sans-serif;
+
+  --color-ink: #1d1f20;
+  --color-ink-muted: #5d5d60;
+  --color-ink-faint: #7a7a7d;
+  --color-paper: #f2f2f3;
+  --color-surface: #e9e9ea;
+  --color-border: color-mix(in srgb, #1d1f20 16%, transparent);
+  --color-border-strong: color-mix(in srgb, #1d1f20 32%, transparent);
+
+  --color-signal: #5980a6;
+  --color-signal-strong: #416180;
+  --color-signal-soft: #eef6ff;
+
+  /* The mockup's warn/fault tones aren't part of the Industry design
+     system's documented token set (they're ad hoc hex literals in its
+     sample data) — formalized here so StatusBadge's existing
+     attention/fault tones pick them up with no component change. */
+  --color-flag: #a68c59;
+  --color-flag-soft: #f5efe4;
+  --color-danger: #a65959;
+  --color-danger-soft: #f5e8e8;
+  --color-success: #416180;
+  --color-success-soft: #eef6ff;
+
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
+
+  --shadow-raised: none;
+  --shadow-lifted: none;
+  --shadow-float: none;
+
+  font-variant-numeric: tabular-nums;
+}
+
+/* The two properties the suite root sets once on <body> (font-family, color)
+   inherit their *resolved* value, not a live var() — so they need
+   re-declaring here to actually pick up the tokens above. Every other
+   token-driven utility (bg-*, border-*, rounded-*, shadow-*...) is applied
+   per element throughout the tree already and re-resolves on its own. */
+.outreach-theme {
+  font-family: var(--font-sans);
+  color: var(--color-ink);
+  background-color: var(--color-paper);
+}
+
+/* PageHeader's ambient glow is a hardcoded teal rgb() rather than a token
+   (see .ambient-wash in app/globals.css) — repointed to the new accent so it
+   doesn't clash with the blueprint palette. */
+.outreach-theme .ambient-wash::before {
+  background: radial-gradient(
+    circle at center,
+    rgb(89 128 166 / 0.12) 0%,
+    rgb(89 128 166 / 0.05) 42%,
+    rgb(89 128 166 / 0) 70%
+  );
+}
+
+/*
+ * Blueprint card frame — a square, transparent, hairline-bordered panel with
+ * registration tick-marks at each corner. Ported from the Industry design
+ * system's styles.css. Class names are new and non-colliding, so they're
+ * left unscoped (this stylesheet only ever loads on /outreach routes).
+ */
+.blueprint {
+  position: relative;
+  border: 1px solid var(--color-border);
+}
+
+.blueprint > .corner {
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  color: color-mix(in srgb, var(--color-ink) 55%, transparent);
+}
+.blueprint > .corner::before,
+.blueprint > .corner::after {
+  content: "";
+  position: absolute;
+  background: currentColor;
+}
+.blueprint > .corner::before {
+  left: 5px;
+  top: 0;
+  width: 1px;
+  height: 100%;
+}
+.blueprint > .corner::after {
+  top: 5px;
+  left: 0;
+  width: 100%;
+  height: 1px;
+}
+.blueprint > .corner.tl {
+  top: -6px;
+  left: -6px;
+}
+.blueprint > .corner.tr {
+  top: -6px;
+  right: -6px;
+}
+.blueprint > .corner.bl {
+  bottom: -6px;
+  left: -6px;
+}
+.blueprint > .corner.br {
+  bottom: -6px;
+  right: -6px;
+}
+
+/* Live-status dot pulse, used by the rail's "Process" section and any other
+   heartbeat-style indicator. */
+@keyframes outreach-tick-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+.outreach-theme .tick {
+  animation: outreach-tick-pulse 2.4s ease-in-out infinite;
+}
+
+.outreach-theme ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.outreach-theme ::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+}

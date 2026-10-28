@@ -1,0 +1,63 @@
+# Full LeadFlow stack for a VPS: `docker compose up -d --build`.
+# For local development run only the database (and MailHog to catch test
+# mail): `docker compose up -d db mailhog`, then `npm run dev`.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: outreach
+    # Bound to localhost: only the app container and you (over SSH) reach it.
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - outreach_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/outreach
+      GMAPS_SCRAPER_URL: http://gmaps-scraper:8080
+    # Put a reverse proxy with HTTPS (Caddy, Nginx) in front of this port.
+    ports:
+      - "127.0.0.1:3000:3000"
+
+  # Google Maps lead scraper engine (gosom/google-maps-scraper, MIT), the
+  # same pinned image google-maps-scraper-kit uses. It has no auth, so it is
+  # never published beyond localhost; the app reaches it over the compose
+  # network.
+  gmaps-scraper:
+    image: gosom/google-maps-scraper:v1.18.1
+    restart: unless-stopped
+    command: ["-web", "-data-folder", "/gmapsdata"]
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - gmaps_data:/gmapsdata
+      - gmaps_cache:/opt
+
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    profiles: ["dev"]
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:1025:1025" # SMTP
+      - "127.0.0.1:8025:8025" # web UI + HTTP API
+
+volumes:
+  outreach_pg_data:
+  gmaps_data:
+  gmaps_cache:

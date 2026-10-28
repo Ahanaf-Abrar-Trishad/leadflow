@@ -1,0 +1,1 @@
+ALTER TABLE "replies" ADD COLUMN "direction" text DEFAULT 'in' NOT NULL;
